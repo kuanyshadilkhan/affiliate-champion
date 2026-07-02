@@ -129,6 +129,27 @@
   .reward-chip .r-cap { font-size: 10px; color: var(--hint); text-transform: uppercase; margin-top: 1px; }
   .task-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--hint); }
   .task-link-btn { display: block; width: 100%; text-align: center; background: rgba(247,166,0,0.12); color: var(--accent); border: none; border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 10px; text-decoration: none; }
+  .task-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
+  .task-form input, .task-form select { width: 100%; background: var(--bg); border: 1.5px solid var(--divider); border-radius: 10px; color: var(--text); padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; margin-bottom: 8px; transition: border-color 0.15s; }
+  .task-form input:focus, .task-form select:focus { border-color: var(--accent); }
+  .task-form select option { background: var(--section-bg); }
+  .tf-row { display: flex; gap: 8px; }
+  .tf-row select { flex: 1; margin-bottom: 0; }
+  .tf-row input { width: 110px; flex-shrink: 0; margin-bottom: 0; }
+  .tf-err { color: var(--red); font-size: 12px; margin-bottom: 6px; display: none; }
+  .subs-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
+  .subs-title { font-size: 11px; color: var(--hint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .sub-item { background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; }
+  .sub-link a { font-size: 12px; color: var(--accent); text-decoration: none; word-break: break-all; }
+  .sub-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+  .social-badge { font-size: 10px; font-weight: 700; background: rgba(247,166,0,0.12); color: var(--accent); padding: 2px 7px; border-radius: 8px; }
+  .views-count { font-size: 11px; color: var(--hint); }
+  .sub-status { font-size: 11px; font-weight: 600; }
+  .sub-status.pending { color: var(--hint); }
+  .sub-status.approved { color: var(--green); }
+  .sub-status.rejected { color: var(--red); }
+  .sub-comment { font-size: 11px; color: var(--hint); margin-top: 4px; font-style: italic; }
+  .deadline-passed-note { text-align: center; font-size: 12px; color: var(--hint); padding: 8px; background: var(--bg); border-radius: 10px; margin-top: 10px; }
 
   .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--secondary-bg); border-top: 1px solid var(--divider); display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; z-index: 50; }
   .tabbar button { flex: 1; background: none; border: none; color: var(--hint); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; }
@@ -320,6 +341,14 @@
     try { const d = await apiGet({ action: 'getByUserId', userId: userId }); return d.data || null; }
     catch (e) { return null; }
   }
+  async function fetchSubmissions(aid) {
+    try { const d = await apiGet({ action: 'getSubmissions', aid: aid }); return d.submissions || []; }
+    catch (e) { return []; }
+  }
+  async function apiSubmitLink(aid, taskId, link, social, views) {
+    try { await apiGet({ action: 'submitLink', aid: aid, taskId: taskId, link: link, social: social, views: views }); return true; }
+    catch (e) { return false; }
+  }
 
   // ---- Session state (in prod, restored from Sheets by Telegram user_id) ----
   let session = { aid: null, nickname: null, loggedIn: false };
@@ -334,6 +363,12 @@
   let leaderboard = [];
   let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0, vol:0, breakdown:{reg:0,ftd:0,eftd:0,vol:0}, multipliers:{reg:5,ftd:40,eftd:150,vol:5} };
   let tasks = [];
+  let submissions = [];
+
+  function truncateUrl(str, n) {
+    const s = str.replace(/^https?:\/\//, '');
+    return s.length > n ? s.slice(0, n) + '…' : s;
+  }
 
   // ---- i18n ----
   const I18N = {
@@ -348,7 +383,11 @@
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Задания',
       reward_pts:'баллы', reward_cash:'при', eftd_word:'eFTD', deadline:'до', linkBtn:'Как создать ссылку →', done:'Выполнено', open:'Активно',
       editNickTitle:'Изменить псевдоним', cancel:'Отмена', save:'Сохранить', toNextPrefix:'до',
-      vol:'Объём торгов', breakdownTitle:'Начисление баллов', totalLabel:'Итого'
+      vol:'Объём торгов', breakdownTitle:'Начисление баллов', totalLabel:'Итого',
+      addLink:'Добавить ссылку', submitBtn:'Отправить', submitting:'Отправляем...',
+      linkPlaceholder:'https://youtube.com/...', socialLabel:'Соцсеть', viewsLabel:'Просмотры',
+      yourLinks:'Ваши ссылки', pending:'На проверке', approved:'Одобрено', rejected:'Отклонено',
+      views:'просм.', deadlinePassed:'Приём ссылок завершён', linkErrEmpty:'Заполните ссылку и просмотры'
     },
     kz: {
       onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
@@ -361,7 +400,11 @@
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Тапсырмалар',
       reward_pts:'ұпай', reward_cash:'шарт:', eftd_word:'eFTD', deadline:'дейін', linkBtn:'Сілтеме қалай жасау керек →', done:'Орындалды', open:'Белсенді',
       editNickTitle:'Лақап атты өзгерту', cancel:'Болдырмау', save:'Сақтау', toNextPrefix:'дейін',
-      vol:'Сауда айналымы', breakdownTitle:'Ұпайлар есебі', totalLabel:'Барлығы'
+      vol:'Сауда айналымы', breakdownTitle:'Ұпайлар есебі', totalLabel:'Барлығы',
+      addLink:'Сілтеме қосу', submitBtn:'Жіберу', submitting:'Жіберілуде...',
+      linkPlaceholder:'https://youtube.com/...', socialLabel:'Әлеуметтік желі', viewsLabel:'Қаралымдар',
+      yourLinks:'Сіздің сілтемелеріңіз', pending:'Тексерілуде', approved:'Мақұлданды', rejected:'Қабылданбады',
+      views:'қаралым', deadlinePassed:'Сілтемелер қабылдау аяқталды', linkErrEmpty:'Сілтеме мен қаралымды толтырыңыз'
     }
   };
   let lang = 'ru';
@@ -441,8 +484,43 @@
 
   function renderTasks() {
     const t = I18N[lang];
-    document.getElementById('tasks-list').innerHTML = tasks.map(task=>`
-      <div class="task-card">
+    const SOCIALS = ['YouTube','Instagram','TikTok','Facebook','Telegram','Twitter/X'];
+    document.getElementById('tasks-list').innerHTML = tasks.map(task => {
+      const taskSubs = submissions.filter(s => s.taskId === String(task.id));
+      const subsHtml = taskSubs.length ? `
+        <div class="subs-wrap">
+          <div class="subs-title">${t.yourLinks}</div>
+          ${taskSubs.map(s => {
+            const icon = s.status==='approved'?'✓':s.status==='rejected'?'✗':'⏳';
+            return `<div class="sub-item">
+              <div class="sub-link"><a href="${s.link}" target="_blank">${truncateUrl(s.link, 40)}</a></div>
+              <div class="sub-meta">
+                <span class="social-badge">${s.social}</span>
+                <span class="views-count">${(s.views||0).toLocaleString()} ${t.views}</span>
+                <span class="sub-status ${s.status}">${icon} ${t[s.status]||t.pending}</span>
+              </div>
+              ${s.comment ? `<div class="sub-comment">${s.comment}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>` : '';
+
+      const canSubmit = task.status === 'open' && !task.deadlinePassed;
+      const formHtml = canSubmit ? `
+        <button class="task-link-btn" onclick="toggleTaskForm('${task.id}')" id="tf-toggle-${task.id}">+ ${t.addLink}</button>
+        <div class="task-form" id="task-form-${task.id}" style="display:none">
+          <div class="tf-err" id="tf-err-${task.id}">${t.linkErrEmpty}</div>
+          <input type="url" id="tf-link-${task.id}" placeholder="${t.linkPlaceholder}" />
+          <div class="tf-row">
+            <select id="tf-social-${task.id}">
+              ${SOCIALS.map(s=>`<option value="${s}">${s}</option>`).join('')}
+            </select>
+            <input type="number" id="tf-views-${task.id}" placeholder="${t.viewsLabel}" min="0" />
+          </div>
+          <button class="btn-primary" id="tf-btn-${task.id}" onclick="submitTaskLink('${task.id}')" style="margin-top:8px;padding:11px;font-size:14px;">${t.submitBtn}</button>
+        </div>` :
+        task.deadlinePassed ? `<div class="deadline-passed-note">🔒 ${t.deadlinePassed}</div>` : '';
+
+      return `<div class="task-card">
         <div class="task-head">
           <div class="task-title">${task.title[lang]}</div>
           <div class="task-badge ${task.status}">${task.status==='open'?t.open:t.done}</div>
@@ -453,8 +531,35 @@
           <div class="reward-chip"><div class="r-val cash">$${task.cash}</div><div class="r-cap">${t.reward_cash} ${task.threshold}+ ${t.eftd_word}</div></div>
         </div>
         <div class="task-meta"><span>${t.deadline} ${task.deadline}</span></div>
-        ${task.status==='open'?`<a class="task-link-btn" href="#" onclick="return false">${t.linkBtn}</a>`:''}
-      </div>`).join('');
+        ${subsHtml}
+        ${formHtml}
+      </div>`;
+    }).join('');
+  }
+
+  function toggleTaskForm(taskId) {
+    const form = document.getElementById('task-form-' + taskId);
+    const btn = document.getElementById('tf-toggle-' + taskId);
+    const t = I18N[lang];
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    btn.textContent = visible ? '+ ' + t.addLink : '— ' + t.addLink;
+  }
+
+  async function submitTaskLink(taskId) {
+    const t = I18N[lang];
+    const link = (document.getElementById('tf-link-' + taskId).value || '').trim();
+    const social = document.getElementById('tf-social-' + taskId).value;
+    const views = (document.getElementById('tf-views-' + taskId).value || '').trim();
+    const errEl = document.getElementById('tf-err-' + taskId);
+    errEl.style.display = 'none';
+    if (!link || !views) { errEl.style.display = 'block'; return; }
+    const btn = document.getElementById('tf-btn-' + taskId);
+    btn.disabled = true; btn.textContent = t.submitting;
+    await apiSubmitLink(session.aid, taskId, link, social, Number(views));
+    submissions = await fetchSubmissions(session.aid);
+    renderTasks();
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
   }
 
   function applyI18n() {
@@ -517,15 +622,17 @@
 
   // ---- load all live data from API ----
   async function loadAllData() {
-    const [lb, st, tk, pool] = await Promise.all([
+    const [lb, st, tk, pool, subs] = await Promise.all([
       fetchLeaderboard(),
       fetchStats(session.aid),
       fetchTasks(),
-      fetchPool()
+      fetchPool(),
+      fetchSubmissions(session.aid)
     ]);
     leaderboard = lb;
     if (st) myStats = st;
     tasks = tk;
+    submissions = subs;
     if (pool) document.getElementById('pool-amount').textContent = '$' + pool.total;
     applyI18n();
   }
@@ -550,6 +657,7 @@
   // expose for inline handlers
   window.setLang=setLang; window.switchTab=switchTab;
   window.openNickModal=openNickModal; window.closeNickModal=closeNickModal; window.saveNick=saveNick;
+  window.toggleTaskForm=toggleTaskForm; window.submitTaskLink=submitTaskLink;
 
   // initial i18n for onboarding labels
   applyI18n();
