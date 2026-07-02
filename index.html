@@ -135,6 +135,12 @@
   .tabbar button.active { color: var(--accent); }
   .tabbar .ico { font-size: 20px; line-height: 1; }
   .footer-note { text-align: center; font-size: 11px; color: var(--hint); padding: 18px 16px 8px; opacity: 0.6; }
+  .breakdown-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--divider); }
+  .breakdown-row:last-child { border-bottom: none; padding-top: 10px; font-weight: 700; font-size: 14px; }
+  .breakdown-row .br-label { color: var(--hint); }
+  .breakdown-row .br-pts { font-weight: 600; color: var(--accent); }
+  .breakdown-row.total-row .br-label { color: var(--text); }
+  .breakdown-row.total-row .br-pts { color: var(--text); }
 
   /* ---------- Modal (edit nickname) ---------- */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
@@ -228,6 +234,11 @@
         <div class="stat-card"><div class="num" id="s-ftd">5</div><div class="cap" data-i18n="ftd">FTD ($1–99)</div></div>
         <div class="stat-card"><div class="num" id="s-reg">19</div><div class="cap" data-i18n="regs">Регистрации</div></div>
         <div class="stat-card"><div class="num green" id="s-earned">$30</div><div class="cap" data-i18n="earned">Заработано</div></div>
+        <div class="stat-card" style="grid-column:span 2"><div class="num" id="s-vol">—</div><div class="cap" data-i18n="vol">Объём торгов</div></div>
+      </div>
+      <div class="stat-card" style="margin-top:8px;">
+        <div class="cap" style="margin-bottom:10px;" data-i18n="breakdownTitle">Начисление баллов</div>
+        <div id="breakdown-rows"></div>
       </div>
       <div class="footer-note" data-i18n="statsNote">Данные обновляются раз в день</div>
     </div>
@@ -321,7 +332,7 @@
   ];
   // live data, loaded from API after login
   let leaderboard = [];
-  let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0 };
+  let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0, vol:0, breakdown:{reg:0,ftd:0,eftd:0,vol:0} };
   let tasks = [];
 
   // ---- i18n ----
@@ -336,7 +347,8 @@
       tasksTitle:'Активные задания', tasksNote:'Не забудьте создать трекинговую ссылку для задания',
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Задания',
       reward_pts:'баллы', reward_cash:'при', eftd_word:'eFTD', deadline:'до', linkBtn:'Как создать ссылку →', done:'Выполнено', open:'Активно',
-      editNickTitle:'Изменить псевдоним', cancel:'Отмена', save:'Сохранить', toNextPrefix:'до'
+      editNickTitle:'Изменить псевдоним', cancel:'Отмена', save:'Сохранить', toNextPrefix:'до',
+      vol:'Объём торгов', breakdownTitle:'Начисление баллов', totalLabel:'Итого', volFormula:'Объём / 100K × 5'
     },
     kz: {
       onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
@@ -348,7 +360,8 @@
       tasksTitle:'Белсенді тапсырмалар', tasksNote:'Тапсырма үшін трекинг сілтемесін жасауды ұмытпаңыз',
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Тапсырмалар',
       reward_pts:'ұпай', reward_cash:'шарт:', eftd_word:'eFTD', deadline:'дейін', linkBtn:'Сілтеме қалай жасау керек →', done:'Орындалды', open:'Белсенді',
-      editNickTitle:'Лақап атты өзгерту', cancel:'Болдырмау', save:'Сақтау', toNextPrefix:'дейін'
+      editNickTitle:'Лақап атты өзгерту', cancel:'Болдырмау', save:'Сақтау', toNextPrefix:'дейін',
+      vol:'Сауда айналымы', breakdownTitle:'Ұпайлар есебі', totalLabel:'Барлығы', volFormula:'Айналым / 100K × 5'
     }
   };
   let lang = 'ru';
@@ -385,7 +398,14 @@
     }).join('');
   }
 
+  function formatVol(v) {
+    if (v >= 1000000) return '$' + (v/1000000).toFixed(1) + 'M';
+    if (v >= 1000) return '$' + Math.round(v/1000) + 'K';
+    return '$' + (v || 0);
+  }
+
   function renderStats() {
+    const t = I18N[lang];
     document.getElementById('my-nick').textContent = session.nickname || 'GoldTrader_KZ';
     document.getElementById('my-aid').textContent = session.aid || '122191';
     document.getElementById('my-points-num').textContent = myStats.points;
@@ -395,12 +415,27 @@
     document.getElementById('s-ftd').textContent = myStats.ftd;
     document.getElementById('s-reg').textContent = myStats.regs;
     document.getElementById('s-earned').textContent = '$'+myStats.earned;
+    document.getElementById('s-vol').textContent = formatVol(myStats.vol);
     const lvlBadgeMedal = {Starter:'🌱',Bronze:'🥉',Silver:'🥈',Gold:'🥇',Elite:'💎'}[myStats.level]||'';
     document.getElementById('my-level').textContent = `${lvlBadgeMedal} ${myStats.level}`;
     const ni = nextLevelInfo(myStats.points);
     document.getElementById('prog-cur').textContent = myStats.level;
-    document.getElementById('prog-next').textContent = ni.nextName ? `${I18N[lang].toNextPrefix} ${ni.nextName}: ${ni.need}` : 'MAX';
+    document.getElementById('prog-next').textContent = ni.nextName ? `${t.toNextPrefix} ${ni.nextName}: ${ni.need}` : 'MAX';
     document.getElementById('prog-fill').style.width = ni.pct + '%';
+    const bd = myStats.breakdown;
+    const bRows = [
+      { label: `${t.regs} × 5`,  pts: bd.reg  },
+      { label: `FTD × 40`,       pts: bd.ftd  },
+      { label: `eFTD × 150`,     pts: bd.eftd },
+      { label: t.volFormula,     pts: bd.vol  },
+      { label: t.totalLabel,     pts: myStats.points, total: true },
+    ];
+    document.getElementById('breakdown-rows').innerHTML = bRows.map(r =>
+      `<div class="breakdown-row${r.total?' total-row':''}">
+        <span class="br-label">${r.label}</span>
+        <span class="br-pts">${r.pts} ${t.reward_pts}</span>
+      </div>`
+    ).join('');
   }
 
   function renderTasks() {
