@@ -1,0 +1,247 @@
+// ===== Bybit KZ Affiliate Champions API =====
+// Google Apps Script Web App backend.
+// Deployed as: Execute as Me, Who has access Anyone.
+// After any edit: Deploy > Manage deployments > Edit > Version: New version > Deploy.
+
+function doGet(e) {
+  var action = e.parameter.action;
+  if (action === 'validateAID') return json({ valid: aidExists(e.parameter.aid) });
+  if (action === 'leaderboard') return json({ leaderboard: getLeaderboard() });
+  if (action === 'stats')       return json({ stats: getStats(e.parameter.aid) });
+  if (action === 'tasks')       return json({ tasks: getTasks() });
+  if (action === 'pool')        return json({ pool: getPool() });
+  if (action === 'saveMapping') { saveMapping(e.parameter.userId, e.parameter.aid, e.parameter.nick); return json({ ok: true }); }
+  if (action === 'getByUserId')   return json({ data: getByUserId(e.parameter.userId) });
+  if (action === 'submitLink')    { submitLink(e.parameter.aid, e.parameter.taskId, e.parameter.link, e.parameter.social, e.parameter.views); return json({ ok: true }); }
+  if (action === 'getSubmissions') return json({ submissions: getSubmissions(e.parameter.aid) });
+  return json({ error: 'unknown action' });
+}
+
+function sheet(name) { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name); }
+function json(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
+
+function rows(name) {
+  var sh = sheet(name);
+  var data = sh.getDataRange().getValues();
+  var headers = data.shift();
+  return data.map(function(r) {
+    var o = {};
+    headers.forEach(function(h, i) { o[String(h).trim()] = r[i]; });
+    return o;
+  });
+}
+
+// read config into key/value object
+function getConfig() {
+  var sh = sheet('config');
+  var data = sh.getDataRange().getValues();
+  var c = {};
+  for (var i = 1; i < data.length; i++) {
+    var key = String(data[i][0]).trim();
+    if (key) c[key] = Number(data[i][1]) || 0;
+  }
+  return c;
+}
+
+// read raw_export, skip "Sum" row, GROUP BY AID and SUM metrics (dupes = different commission rows)
+function affiliateRows() {
+  var raw = rows('raw_export').filter(function(r) {
+    var aid = String(r['AID']).trim();
+    return aid && aid.toLowerCase() !== 'sum';
+  });
+  var grouped = {};
+  raw.forEach(function(r) {
+    var aid = String(r['AID']).trim();
+    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0 };
+    grouped[aid].eFTD += Number(r['eFTD']) || 0;
+    grouped[aid].ftd  += Number(r['ftd']) || 0;
+    grouped[aid].reg  += Number(r['Reg Users']) || 0;
+    grouped[aid].vol  += Number(r['Vol_Portal_Client_Non_MT5']) || 0;
+  });
+  return Object.keys(grouped).map(function(k) { return grouped[k]; });
+}
+
+function calcPoints(a, c) {
+  var volUnit = c.vol_unit_size || 100000;
+  return a.reg  * (c.points_per_reg  || 0)
+       + a.ftd  * (c.points_per_ftd  || 0)
+       + a.eFTD * (c.points_per_eftd || 0)
+       + Math.floor(a.vol / volUnit) * (c.points_per_vol_unit || 0);
+}
+
+function levelFor(points, c) {
+  if (points >= (c.level_elite  || 1500)) return 'Elite';
+  if (points >= (c.level_gold   || 700))  return 'Gold';
+  if (points >= (c.level_silver || 300))  return 'Silver';
+  if (points >= (c.level_bronze || 100))  return 'Bronze';
+  return 'Starter';
+}
+
+function aidExists(aid) {
+  return affiliateRows().some(function(a) { return a.AID === String(aid).trim(); });
+}
+
+function nickMap() {
+  var m = {};
+  rows('mapping').forEach(function(x) { if (x['aid']) m[String(x['aid']).trim()] = x['nickname']; });
+  return m;
+}
+
+function getAllTaskPoints() {
+  var sh = sheet('submissions');
+  if (!sh) return {};
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return {};
+  var headers = data[0];
+  var aidIdx = headers.indexOf('aid');
+  var taskIdIdx = headers.indexOf('task_id');
+  var statusIdx = headers.indexOf('status');
+  var approvedByAid = {};
+  data.slice(1).forEach(function(r) {
+    if (String(r[statusIdx]).trim() === 'approved') {
+      var aid = String(r[aidIdx]).trim();
+      var taskId = String(r[taskIdIdx]).trim();
+      if (!approvedByAid[aid]) approvedByAid[aid] = {};
+      approvedByAid[aid][taskId] = true;
+    }
+  });
+  var taskPtsMap = {};
+  rows('tasks').filter(function(t){ return t['id']; }).forEach(function(t) {
+    taskPtsMap[String(t['id']).trim()] = Number(t['pts']) || 0;
+  });
+  var result = {};
+  Object.keys(approvedByAid).forEach(function(aid) {
+    var total = 0;
+    Object.keys(approvedByAid[aid]).forEach(function(tid) { total += taskPtsMap[tid] || 0; });
+    result[aid] = total;
+  });
+  return result;
+}
+
+function getLeaderboard() {
+  var c = getConfig();
+  var nicks = nickMap();
+  var taskPtsMap = getAllTaskPoints();
+  return affiliateRows().map(function(a) {
+    var pts = calcPoints(a, c) + (taskPtsMap[a.AID] || 0);
+    return { aid: a.AID, nick: nicks[a.AID] || ('AID ' + a.AID), points: pts, eftd: a.eFTD, level: levelFor(pts, c) };
+  }).sort(function(x, y) { return y.points - x.points; });
+}
+
+function getStats(aid) {
+  var aidStr = String(aid).trim();
+  var c = getConfig();
+  var affRows = affiliateRows();
+  var taskPtsMap = getAllTaskPoints();
+  var a = affRows.filter(function(x){ return x.AID === aidStr; })[0];
+  if (!a) return null;
+  var volUnit = c.vol_unit_size || 100000;
+  var taskPts = taskPtsMap[aidStr] || 0;
+  var pts = calcPoints(a, c) + taskPts;
+  var lb = affRows.map(function(x){
+    return { aid: x.AID, points: calcPoints(x, c) + (taskPtsMap[x.AID] || 0) };
+  }).sort(function(x, y){ return y.points - x.points; });
+  var rank = 1;
+  for (var i = 0; i < lb.length; i++) { if (lb[i].aid === aidStr) { rank = i + 1; break; } }
+  return {
+    aid: aidStr, points: pts, eftd: a.eFTD, ftd: a.ftd, regs: a.reg, vol: a.vol,
+    earned: a.eFTD * (c.usd_per_eftd || 10),
+    level: levelFor(pts, c), rank: rank, total: lb.length,
+    breakdown: {
+      reg:  a.reg  * (c.points_per_reg  || 0),
+      ftd:  a.ftd  * (c.points_per_ftd  || 0),
+      eftd: a.eFTD * (c.points_per_eftd || 0),
+      vol:  Math.floor(a.vol / volUnit) * (c.points_per_vol_unit || 0),
+      tasks: taskPts
+    },
+    multipliers: {
+      reg:  c.points_per_reg      || 0,
+      ftd:  c.points_per_ftd      || 0,
+      eftd: c.points_per_eftd     || 0,
+      vol:  c.points_per_vol_unit || 0
+    }
+  };
+}
+
+function getPool() {
+  var c = getConfig();
+  var base = c.pool_base || 500;
+  var perEftd = c.pool_per_eftd || 10;
+  var totalEftd = 0;
+  affiliateRows().forEach(function(a) { totalEftd += a.eFTD; });
+  return { base: base, eftd: totalEftd, topup: totalEftd * perEftd, total: base + totalEftd * perEftd };
+}
+
+function getTasks() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  return rows('tasks').filter(function(t){ return t['id']; }).map(function(t) {
+    var dl = t['deadline'];
+    var dlDate = dl ? new Date(dl) : null;
+    var dlPassed = dlDate && !isNaN(dlDate) ? dlDate < today : false;
+    var dlStr = dlDate && !isNaN(dlDate)
+      ? dlDate.toLocaleDateString('ru-RU', {day:'numeric', month:'long'})
+      : String(dl || '');
+    return {
+      id: t['id'], status: t['status'] || 'open',
+      title: { ru: t['title_ru'], kz: t['title_kz'] },
+      desc:  { ru: t['desc_ru'],  kz: t['desc_kz'] },
+      pts: Number(t['pts']) || 0, cash: Number(t['cash']) || 0,
+      threshold: Number(t['threshold']) || 0,
+      deadline: dlStr, deadlinePassed: dlPassed
+    };
+  });
+}
+
+function submitLink(aid, taskId, link, social, views) {
+  var sh = sheet('submissions');
+  if (!sh) return;
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  sh.appendRow([String(aid).trim(), String(taskId).trim(), link, social, Number(views) || 0, now, 'pending', '']);
+}
+
+function getSubmissions(aid) {
+  var sh = sheet('submissions');
+  if (!sh) return [];
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var headers = data[0];
+  return data.slice(1).filter(function(r) {
+    var i = headers.indexOf('aid');
+    return String(r[i]).trim() === String(aid).trim();
+  }).map(function(r) {
+    function val(h) { var i = headers.indexOf(h); return i >= 0 ? r[i] : ''; }
+    return {
+      taskId: String(val('task_id')).trim(),
+      link: String(val('link') || ''),
+      social: String(val('social') || ''),
+      views: Number(val('views')) || 0,
+      submittedAt: String(val('submitted_at') || ''),
+      status: String(val('status') || 'pending'),
+      comment: String(val('comment') || '')
+    };
+  });
+}
+
+function getByUserId(userId) {
+  var data = rows('mapping');
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    if (String(row['user_id']).trim() === String(userId).trim()) {
+      return { aid: String(row['aid']).trim(), nickname: String(row['nickname']).trim() };
+    }
+  }
+  return null;
+}
+
+function saveMapping(userId, aid, nick) {
+  var sh = sheet('mapping');
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === String(userId).trim()) {
+      sh.getRange(i + 1, 2).setValue(aid);
+      sh.getRange(i + 1, 3).setValue(nick);
+      return;
+    }
+  }
+  sh.appendRow([userId, aid, nick]);
+}
