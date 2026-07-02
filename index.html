@@ -706,9 +706,9 @@
         session.nickname = existing.nickname;
         session.userId = userId;
         session.loggedIn = true;
+        await loadAllData();
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('main').classList.add('visible');
-        await loadAllData();
         return;
       }
     }
