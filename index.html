@@ -158,6 +158,10 @@
   .tabbar button.active { color: var(--accent); }
   .tabbar .ico { font-size: 20px; line-height: 1; }
   .footer-note { text-align: center; font-size: 11px; color: var(--hint); padding: 18px 16px 8px; opacity: 0.6; }
+  .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; z-index: 300; }
+  .loading-screen .brand { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--divider); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .breakdown-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--divider); }
   .breakdown-row:last-child { border-bottom: none; padding-top: 10px; font-weight: 700; font-size: 14px; }
   .breakdown-row .br-label { color: var(--hint); }
@@ -178,8 +182,14 @@
 </head>
 <body>
 
+<!-- ============ LOADING ============ -->
+<div class="loading-screen" id="loading-screen">
+  <div class="brand">Bybit Kazakhstan</div>
+  <div class="spinner"></div>
+</div>
+
 <!-- ============ ONBOARDING ============ -->
-<div class="onboard" id="onboard">
+<div class="onboard" id="onboard" style="display:none;">
   <div class="brand">Bybit Kazakhstan</div>
   <h1 data-i18n="onbTitle">Affiliate Champions</h1>
   <p class="lead" id="onb-lead" data-i18n="onbLead">Введите ваш AID для входа в рейтинг партнёров</p>
@@ -680,17 +690,22 @@
   // ---- Session restore: skip onboarding if user already mapped ----
   async function tryRestoreSession() {
     const userId = tg?.initDataUnsafe?.user?.id;
-    if (!userId) return; // no Telegram context, show onboarding
-    const existing = await fetchUserByTelegramId(String(userId));
-    if (existing && existing.aid && existing.nickname) {
-      session.aid = existing.aid;
-      session.nickname = existing.nickname;
-      session.userId = userId;
-      session.loggedIn = true;
-      document.getElementById('onboard').style.display = 'none';
-      document.getElementById('main').classList.add('visible');
-      await loadAllData();
+    if (userId) {
+      const existing = await fetchUserByTelegramId(String(userId));
+      if (existing && existing.aid && existing.nickname) {
+        session.aid = existing.aid;
+        session.nickname = existing.nickname;
+        session.userId = userId;
+        session.loggedIn = true;
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('main').classList.add('visible');
+        await loadAllData();
+        return;
+      }
     }
+    // No session — show onboarding
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('onboard').style.display = 'flex';
   }
   tryRestoreSession();
 </script>
