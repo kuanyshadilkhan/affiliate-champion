@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bybit KZ · Affiliate Champions</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #0f1115);
+    --secondary-bg: var(--tg-theme-secondary-bg-color, #17191e);
+    --text: var(--tg-theme-text-color, #f2f3f5);
+    --hint: var(--tg-theme-hint-color, #8a8f98);
+    --section-bg: var(--tg-theme-section-bg-color, #1c1f26);
+    --accent: #f7a600;
+    --gold: #f7a600; --silver: #b8bcc4; --bronze: #cd8a4b; --green: #26a17b; --red: #e0574a;
+    --divider: rgba(138,143,152,0.15);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.4;
+    overscroll-behavior-y: none;
+  }
+  .app { max-width: 640px; margin: 0 auto; }
+  input {
+    font-family: inherit;
+    font-size: 16px; /* prevents iOS zoom */
+  }
+
+  /* ---------- Onboarding (login) ---------- */
+  .onboard {
+    min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
+    padding: 32px 24px; max-width: 640px; margin: 0 auto;
+  }
+  .onboard .brand { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; text-transform: uppercase; text-align: center; }
+  .onboard h1 { font-size: 26px; font-weight: 800; text-align: center; margin: 6px 0 4px; }
+  .onboard .lead { font-size: 14px; color: var(--hint); text-align: center; margin-bottom: 28px; line-height: 1.5; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; color: var(--hint); font-weight: 600; margin-bottom: 7px; }
+  .field input {
+    width: 100%; background: var(--section-bg); border: 1.5px solid var(--divider);
+    border-radius: 12px; padding: 14px 16px; color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field .err { color: var(--red); font-size: 12px; margin-top: 6px; display: none; }
+  .field.invalid input { border-color: var(--red); }
+  .field.invalid .err { display: block; }
+  .btn-primary {
+    width: 100%; background: var(--accent); color: #1a1a1a; border: none; border-radius: 12px;
+    padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+  .onboard .step-hint { text-align: center; font-size: 12px; color: var(--hint); margin-top: 18px; }
+  .checking { text-align: center; font-size: 13px; color: var(--accent); margin-top: 10px; display: none; }
+
+  /* ---------- Main app ---------- */
+  .main { display: none; padding-bottom: 76px; }
+  .main.visible { display: block; }
+
+  .header { padding: 18px 16px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { display: flex; flex-direction: column; gap: 2px; }
+  .header-title .brand { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+  .header-title .name { font-size: 20px; font-weight: 700; }
+  .lang-toggle { display: flex; background: var(--section-bg); border-radius: 20px; padding: 3px; gap: 2px; }
+  .lang-toggle button { border: none; background: transparent; color: var(--hint); font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 16px; cursor: pointer; transition: all 0.15s; }
+  .lang-toggle button.active { background: var(--accent); color: #1a1a1a; }
+
+  .pool-banner {
+    margin: 4px 16px 16px;
+    background: linear-gradient(135deg, rgba(247,166,0,0.14), rgba(247,166,0,0.04));
+    border: 1px solid rgba(247,166,0,0.25); border-radius: var(--radius);
+    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .pool-banner .label { font-size: 12px; color: var(--hint); margin-bottom: 3px; }
+  .pool-banner .amount { font-size: 24px; font-weight: 800; color: var(--accent); }
+  .pool-banner .sub { font-size: 11px; color: var(--hint); text-align: right; max-width: 130px; }
+
+  .tab-content { display: none; padding: 0 16px; animation: fade 0.2s; }
+  .tab-content.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px);} to {opacity:1; transform: none;} }
+  .section-title { font-size: 13px; color: var(--hint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 6px 2px 10px; }
+
+  .lb-list { display: flex; flex-direction: column; gap: 8px; }
+  .lb-row { display: flex; align-items: center; background: var(--section-bg); border-radius: var(--radius); padding: 12px 14px; gap: 12px; }
+  .lb-row.me { border: 1.5px solid var(--accent); }
+  .lb-rank { font-size: 16px; font-weight: 800; width: 30px; text-align: center; flex-shrink: 0; color: var(--hint); }
+  .lb-rank.top1 { color: var(--gold); } .lb-rank.top2 { color: var(--silver); } .lb-rank.top3 { color: var(--bronze); }
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-meta { font-size: 12px; color: var(--hint); margin-top: 1px; }
+  .lb-points { text-align: right; flex-shrink: 0; }
+  .lb-points .val { font-weight: 800; font-size: 16px; color: var(--accent); }
+  .lb-points .unit { font-size: 10px; color: var(--hint); text-transform: uppercase; }
+  .lb-level-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
+
+  .stat-hero { background: var(--section-bg); border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 14px; }
+  .stat-hero .nick-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
+  .stat-hero .nick { font-size: 17px; font-weight: 700; }
+  .stat-hero .edit-nick { background: none; border: none; color: var(--accent); font-size: 13px; cursor: pointer; font-weight: 600; }
+  .stat-hero .level-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; background: rgba(247,166,0,0.15); color: var(--accent); margin-bottom: 12px; }
+  .stat-hero .big-points { font-size: 44px; font-weight: 800; line-height: 1; }
+  .stat-hero .big-points span { font-size: 16px; color: var(--hint); font-weight: 600; }
+  .stat-hero .rank-line { font-size: 13px; color: var(--hint); margin-top: 6px; }
+  .stat-hero .aid-line { font-size: 11px; color: var(--hint); margin-top: 4px; opacity: 0.7; }
+  .progress-wrap { margin-top: 16px; }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--hint); margin-bottom: 6px; }
+  .progress-bar { height: 8px; background: var(--bg); border-radius: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #ffce6b); border-radius: 8px; transition: width 0.4s; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { background: var(--section-bg); border-radius: var(--radius); padding: 14px; }
+  .stat-card .num { font-size: 24px; font-weight: 800; }
+  .stat-card .cap { font-size: 12px; color: var(--hint); margin-top: 2px; }
+  .stat-card .num.accent { color: var(--accent); } .stat-card .num.green { color: var(--green); }
+
+  .task-card { background: var(--section-bg); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; }
+  .task-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .task-title { font-weight: 700; font-size: 15px; flex: 1; }
+  .task-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px; text-transform: uppercase; flex-shrink: 0; }
+  .task-badge.open { background: rgba(38,161,123,0.15); color: var(--green); }
+  .task-badge.done { background: rgba(138,143,152,0.15); color: var(--hint); }
+  .task-desc { font-size: 13px; color: var(--hint); margin-bottom: 12px; line-height: 1.45; }
+  .task-rewards { display: flex; gap: 8px; margin-bottom: 12px; }
+  .reward-chip { flex: 1; background: var(--bg); border-radius: 10px; padding: 8px 10px; text-align: center; }
+  .reward-chip .r-val { font-weight: 800; font-size: 15px; }
+  .reward-chip .r-val.pts { color: var(--accent); } .reward-chip .r-val.cash { color: var(--green); }
+  .reward-chip .r-cap { font-size: 10px; color: var(--hint); text-transform: uppercase; margin-top: 1px; }
+  .task-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--hint); }
+  .task-link-btn { display: block; width: 100%; text-align: center; background: rgba(247,166,0,0.12); color: var(--accent); border: none; border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 10px; text-decoration: none; }
+
+  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--secondary-bg); border-top: 1px solid var(--divider); display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; z-index: 50; }
+  .tabbar button { flex: 1; background: none; border: none; color: var(--hint); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; }
+  .tabbar button.active { color: var(--accent); }
+  .tabbar .ico { font-size: 20px; line-height: 1; }
+  .footer-note { text-align: center; font-size: 11px; color: var(--hint); padding: 18px 16px 8px; opacity: 0.6; }
+
+  /* ---------- Modal (edit nickname) ---------- */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+  .modal-overlay.visible { display: flex; }
+  .modal { background: var(--secondary-bg); border-radius: 16px; padding: 22px; width: 100%; max-width: 340px; }
+  .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+  .modal .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+  .modal .btn-row button { flex: 1; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .modal .btn-cancel { background: var(--section-bg); color: var(--text); }
+  .modal .btn-save { background: var(--accent); color: #1a1a1a; }
+</style>
+</head>
+<body>
+
+<!-- ============ ONBOARDING ============ -->
+<div class="onboard" id="onboard">
+  <div class="brand">Bybit Kazakhstan</div>
+  <h1 data-i18n="onbTitle">Affiliate Champions</h1>
+  <p class="lead" id="onb-lead" data-i18n="onbLead">Введите ваш AID для входа в рейтинг партнёров</p>
+
+  <!-- Step 1: AID -->
+  <div id="step-aid">
+    <div class="field" id="aid-field">
+      <label data-i18n="aidLabel">Ваш AID</label>
+      <input type="text" id="aid-input" inputmode="numeric" placeholder="122191" autocomplete="off">
+      <div class="err" id="aid-err" data-i18n="aidErr">AID не найден в списке партнёров</div>
+    </div>
+    <div class="checking" id="aid-checking" data-i18n="checking">Проверяем AID...</div>
+    <button class="btn-primary" id="aid-next" data-i18n="continueBtn">Продолжить</button>
+  </div>
+
+  <!-- Step 2: Nickname -->
+  <div id="step-nick" style="display:none;">
+    <div class="field" id="nick-field">
+      <label data-i18n="nickLabel">Придумайте псевдоним для рейтинга</label>
+      <input type="text" id="nick-input" maxlength="20" placeholder="GoldTrader_KZ" autocomplete="off">
+      <div class="err" id="nick-err" data-i18n="nickErr">От 2 до 20 символов</div>
+    </div>
+    <p class="step-hint" data-i18n="nickHint">Это имя увидят другие партнёры в рейтинге. Настоящее имя указывать не нужно.</p>
+    <button class="btn-primary" id="nick-done" data-i18n="startBtn">Войти в рейтинг</button>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div class="main" id="main">
+  <div class="app">
+    <div class="header">
+      <div class="header-title">
+        <span class="brand">Bybit Kazakhstan</span>
+        <span class="name" data-i18n="appName">Affiliate Champions</span>
+      </div>
+      <div class="lang-toggle">
+        <button id="lang-ru" class="active" onclick="setLang('ru')">RU</button>
+        <button id="lang-kz" onclick="setLang('kz')">KZ</button>
+      </div>
+    </div>
+
+    <div class="pool-banner">
+      <div>
+        <div class="label" data-i18n="poolLabel">Призовой пул месяца</div>
+        <div class="amount" id="pool-amount">$800</div>
+      </div>
+      <div class="sub" data-i18n="poolSub">База $500 + $10 за каждый eFTD</div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="tab-content active" id="tab-leaderboard">
+      <div class="section-title" data-i18n="lbTitle">Рейтинг за месяц</div>
+      <div class="lb-list" id="lb-list"></div>
+      <div class="footer-note" data-i18n="lbNote">Обновляется ежедневно</div>
+    </div>
+
+    <!-- My Stats -->
+    <div class="tab-content" id="tab-stats">
+      <div class="stat-hero">
+        <div class="nick-row">
+          <span class="nick" id="my-nick">GoldTrader_KZ</span>
+          <button class="edit-nick" onclick="openNickModal()" data-i18n="editNick">изменить</button>
+        </div>
+        <div class="level-badge" id="my-level">🥈 Silver</div>
+        <div class="big-points"><span id="my-points-num">420</span> <span data-i18n="pts">очков</span></div>
+        <div class="rank-line"><span data-i18n="yourRank">Ваше место</span>: <b id="my-rank">4</b> <span data-i18n="of">из</span> <span id="my-total">—</span></div>
+        <div class="aid-line">AID: <span id="my-aid">122191</span></div>
+        <div class="progress-wrap">
+          <div class="progress-labels"><span id="prog-cur">Silver</span><span id="prog-next">до Gold: 280</span></div>
+          <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:60%"></div></div>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num accent" id="s-eftd">3</div><div class="cap">eFTD</div></div>
+        <div class="stat-card"><div class="num" id="s-ftd">5</div><div class="cap" data-i18n="ftd">FTD ($1–99)</div></div>
+        <div class="stat-card"><div class="num" id="s-reg">19</div><div class="cap" data-i18n="regs">Регистрации</div></div>
+        <div class="stat-card"><div class="num green" id="s-earned">$30</div><div class="cap" data-i18n="earned">Заработано</div></div>
+      </div>
+      <div class="footer-note" data-i18n="statsNote">Данные обновляются раз в день</div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="tab-content" id="tab-tasks">
+      <div class="section-title" data-i18n="tasksTitle">Активные задания</div>
+      <div id="tasks-list"></div>
+      <div class="footer-note" data-i18n="tasksNote">Не забудьте создать трекинговую ссылку для задания</div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <button class="active" data-tab="leaderboard" onclick="switchTab('leaderboard', this)"><span class="ico">🏆</span><span data-i18n="tabLb">Рейтинг</span></button>
+    <button data-tab="stats" onclick="switchTab('stats', this)"><span class="ico">📊</span><span data-i18n="tabStats">Статистика</span></button>
+    <button data-tab="tasks" onclick="switchTab('tasks', this)"><span class="ico">🎯</span><span data-i18n="tabTasks">Задания</span></button>
+  </div>
+</div>
+
+<!-- Nickname edit modal -->
+<div class="modal-overlay" id="nick-modal">
+  <div class="modal">
+    <h3 data-i18n="editNickTitle">Изменить псевдоним</h3>
+    <div class="field" id="nick-edit-field" style="margin-bottom:0;">
+      <input type="text" id="nick-edit-input" maxlength="20" autocomplete="off">
+      <div class="err" data-i18n="nickErr">От 2 до 20 символов</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeNickModal()" data-i18n="cancel">Отмена</button>
+      <button class="btn-save" onclick="saveNick()" data-i18n="save">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  // ============================================================
+  // BACKEND — live calls to Google Apps Script web app
+  // ============================================================
+  const API_URL = 'https://script.google.com/macros/s/AKfycbz0jZfdFNFGJjLNkktiLrJdGAvD4q0Hpwo73Vwplu-G3xiwqfAaso7TZLDKVGeLlAEq/exec';
+
+  async function apiGet(params) {
+    const qs = Object.keys(params).map(k => k + '=' + encodeURIComponent(params[k])).join('&');
+    const r = await fetch(API_URL + '?' + qs);
+    return await r.json();
+  }
+
+  async function validateAID(aid) {
+    try {
+      const d = await apiGet({ action: 'validateAID', aid: aid });
+      return !!d.valid;
+    } catch (e) { return false; }
+  }
+  async function saveMapping(userId, aid, nickname) {
+    try {
+      await apiGet({ action: 'saveMapping', userId: userId, aid: aid, nick: nickname });
+      return true;
+    } catch (e) { return false; }
+  }
+  async function fetchLeaderboard() {
+    try { const d = await apiGet({ action: 'leaderboard' }); return d.leaderboard || []; }
+    catch (e) { return []; }
+  }
+  async function fetchStats(aid) {
+    try { const d = await apiGet({ action: 'stats', aid: aid }); return d.stats || null; }
+    catch (e) { return null; }
+  }
+  async function fetchTasks() {
+    try { const d = await apiGet({ action: 'tasks' }); return d.tasks || []; }
+    catch (e) { return []; }
+  }
+  async function fetchPool() {
+    try { const d = await apiGet({ action: 'pool' }); return d.pool || null; }
+    catch (e) { return null; }
+  }
+  async function fetchUserByTelegramId(userId) {
+    try { const d = await apiGet({ action: 'getByUserId', userId: userId }); return d.data || null; }
+    catch (e) { return null; }
+  }
+
+  // ---- Session state (in prod, restored from Sheets by Telegram user_id) ----
+  let session = { aid: null, nickname: null, loggedIn: false };
+
+  // ---- MOCK leaderboard / stats / tasks ----
+  const LEVELS = [
+    { name:'Starter', min:0, color:'#8a8f98' }, { name:'Bronze', min:100, color:'#cd8a4b' },
+    { name:'Silver', min:300, color:'#b8bcc4' }, { name:'Gold', min:700, color:'#f7a600' },
+    { name:'Elite', min:1500, color:'#f2f3f5' },
+  ];
+  // live data, loaded from API after login
+  let leaderboard = [];
+  let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0 };
+  let tasks = [];
+
+  // ---- i18n ----
+  const I18N = {
+    ru: {
+      onbTitle:'Affiliate Champions', onbLead:'Введите ваш AID для входа в рейтинг партнёров',
+      aidLabel:'Ваш AID', aidErr:'AID не найден в списке партнёров', checking:'Проверяем AID...', continueBtn:'Продолжить',
+      nickLabel:'Придумайте псевдоним для рейтинга', nickErr:'От 2 до 20 символов', nickHint:'Это имя увидят другие партнёры в рейтинге. Настоящее имя указывать не нужно.', startBtn:'Войти в рейтинг',
+      appName:'Affiliate Champions', poolLabel:'Призовой пул месяца', poolSub:'База $500 + $10 за каждый eFTD',
+      lbTitle:'Рейтинг за месяц', lbNote:'Обновляется ежедневно',
+      pts:'очков', yourRank:'Ваше место', of:'из', ftd:'FTD ($1–99)', regs:'Регистрации', earned:'Заработано', statsNote:'Данные обновляются раз в день', editNick:'изменить',
+      tasksTitle:'Активные задания', tasksNote:'Не забудьте создать трекинговую ссылку для задания',
+      tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Задания',
+      reward_pts:'баллы', reward_cash:'при', eftd_word:'eFTD', deadline:'до', linkBtn:'Как создать ссылку →', done:'Выполнено', open:'Активно',
+      editNickTitle:'Изменить псевдоним', cancel:'Отмена', save:'Сохранить', toNextPrefix:'до'
+    },
+    kz: {
+      onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
+      aidLabel:'Сіздің AID', aidErr:'AID серіктестер тізімінде табылмады', checking:'AID тексерілуде...', continueBtn:'Жалғастыру',
+      nickLabel:'Рейтинг үшін лақап ат ойлап табыңыз', nickErr:'2-ден 20 таңбаға дейін', nickHint:'Бұл атты рейтингте басқа серіктестер көреді. Нақты атыңызды көрсету қажет емес.', startBtn:'Рейтингке кіру',
+      appName:'Affiliate Champions', poolLabel:'Айлық жүлде қоры', poolSub:'Негізі $500 + әр eFTD үшін $10',
+      lbTitle:'Айлық рейтинг', lbNote:'Күн сайын жаңарады',
+      pts:'ұпай', yourRank:'Сіздің орныңыз', of:'/', ftd:'FTD ($1–99)', regs:'Тіркелулер', earned:'Табыс', statsNote:'Деректер күніне бір рет жаңарады', editNick:'өзгерту',
+      tasksTitle:'Белсенді тапсырмалар', tasksNote:'Тапсырма үшін трекинг сілтемесін жасауды ұмытпаңыз',
+      tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Тапсырмалар',
+      reward_pts:'ұпай', reward_cash:'шарт:', eftd_word:'eFTD', deadline:'дейін', linkBtn:'Сілтеме қалай жасау керек →', done:'Орындалды', open:'Белсенді',
+      editNickTitle:'Лақап атты өзгерту', cancel:'Болдырмау', save:'Сақтау', toNextPrefix:'дейін'
+    }
+  };
+  let lang = 'ru';
+
+  function medalFor(r){ return r===1?'🥇':r===2?'🥈':r===3?'🥉':''; }
+  function levelColor(n){ return (LEVELS.find(l=>l.name===n)||{}).color||'#8a8f98'; }
+  function nextLevelInfo(points){
+    for (let i=0;i<LEVELS.length;i++){
+      if (points < LEVELS[i].min){
+        const prev = LEVELS[i-1];
+        const need = LEVELS[i].min - points;
+        const span = LEVELS[i].min - prev.min;
+        const pct = Math.round(((points - prev.min)/span)*100);
+        return { nextName:LEVELS[i].name, need, pct:Math.max(5,Math.min(100,pct)) };
+      }
+    }
+    return { nextName:null, need:0, pct:100 };
+  }
+
+  function renderLeaderboard() {
+    const el = document.getElementById('lb-list');
+    el.innerHTML = leaderboard.map((p,i)=>{
+      const rank=i+1, rankClass=rank<=3?`top${rank}`:'', medal=medalFor(rank);
+      const isMe = session.aid && p.aid===session.aid;
+      const displayNick = isMe ? session.nickname : p.nick;
+      return `<div class="lb-row ${isMe?'me':''}">
+        <div class="lb-rank ${rankClass}">${medal||rank}</div>
+        <div class="lb-info">
+          <div class="lb-name">${displayNick}</div>
+          <div class="lb-meta"><span class="lb-level-dot" style="background:${levelColor(p.level)}"></span>${p.level} · ${p.eftd} eFTD</div>
+        </div>
+        <div class="lb-points"><div class="val">${p.points}</div><div class="unit">${I18N[lang].reward_pts}</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderStats() {
+    document.getElementById('my-nick').textContent = session.nickname || 'GoldTrader_KZ';
+    document.getElementById('my-aid').textContent = session.aid || '122191';
+    document.getElementById('my-points-num').textContent = myStats.points;
+    document.getElementById('my-rank').textContent = myStats.rank;
+    document.getElementById('my-total').textContent = myStats.total || '—';
+    document.getElementById('s-eftd').textContent = myStats.eftd;
+    document.getElementById('s-ftd').textContent = myStats.ftd;
+    document.getElementById('s-reg').textContent = myStats.regs;
+    document.getElementById('s-earned').textContent = '$'+myStats.earned;
+    const lvlBadgeMedal = {Starter:'🌱',Bronze:'🥉',Silver:'🥈',Gold:'🥇',Elite:'💎'}[myStats.level]||'';
+    document.getElementById('my-level').textContent = `${lvlBadgeMedal} ${myStats.level}`;
+    const ni = nextLevelInfo(myStats.points);
+    document.getElementById('prog-cur').textContent = myStats.level;
+    document.getElementById('prog-next').textContent = ni.nextName ? `${I18N[lang].toNextPrefix} ${ni.nextName}: ${ni.need}` : 'MAX';
+    document.getElementById('prog-fill').style.width = ni.pct + '%';
+  }
+
+  function renderTasks() {
+    const t = I18N[lang];
+    document.getElementById('tasks-list').innerHTML = tasks.map(task=>`
+      <div class="task-card">
+        <div class="task-head">
+          <div class="task-title">${task.title[lang]}</div>
+          <div class="task-badge ${task.status}">${task.status==='open'?t.open:t.done}</div>
+        </div>
+        <div class="task-desc">${task.desc[lang]}</div>
+        <div class="task-rewards">
+          <div class="reward-chip"><div class="r-val pts">+${task.pts}</div><div class="r-cap">${t.reward_pts}</div></div>
+          <div class="reward-chip"><div class="r-val cash">$${task.cash}</div><div class="r-cap">${t.reward_cash} ${task.threshold}+ ${t.eftd_word}</div></div>
+        </div>
+        <div class="task-meta"><span>${t.deadline} ${task.deadline}</span></div>
+        ${task.status==='open'?`<a class="task-link-btn" href="#" onclick="return false">${t.linkBtn}</a>`:''}
+      </div>`).join('');
+  }
+
+  function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(n=>{
+      const k=n.getAttribute('data-i18n');
+      if (I18N[lang][k]) n.textContent=I18N[lang][k];
+    });
+    renderLeaderboard(); renderTasks(); renderStats();
+  }
+  function setLang(l){
+    lang=l;
+    document.getElementById('lang-ru').classList.toggle('active', l==='ru');
+    document.getElementById('lang-kz').classList.toggle('active', l==='kz');
+    document.documentElement.lang=l;
+    applyI18n();
+  }
+  function switchTab(name, btn){
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    document.querySelectorAll('.tabbar button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  }
+
+  // ---- Onboarding flow ----
+  const aidInput = document.getElementById('aid-input');
+  const aidField = document.getElementById('aid-field');
+  const aidNext = document.getElementById('aid-next');
+  const aidChecking = document.getElementById('aid-checking');
+
+  aidNext.addEventListener('click', async () => {
+    const aid = aidInput.value.trim();
+    aidField.classList.remove('invalid');
+    if (!aid) { aidField.classList.add('invalid'); return; }
+    aidNext.disabled = true; aidChecking.style.display = 'block';
+    const valid = await validateAID(aid);   // <-- Sheets check hook
+    aidChecking.style.display = 'none'; aidNext.disabled = false;
+    if (!valid) { aidField.classList.add('invalid'); if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); return; }
+    session.aid = aid;
+    document.getElementById('step-aid').style.display='none';
+    document.getElementById('step-nick').style.display='block';
+    document.getElementById('onb-lead').textContent = lang==='ru'?'Почти готово':'Дайын болды';
+    document.getElementById('nick-input').focus();
+  });
+  aidInput.addEventListener('input', ()=> aidField.classList.remove('invalid'));
+
+  const nickInput = document.getElementById('nick-input');
+  const nickField = document.getElementById('nick-field');
+  document.getElementById('nick-done').addEventListener('click', async () => {
+    const nick = nickInput.value.trim();
+    if (nick.length < 2 || nick.length > 20) { nickField.classList.add('invalid'); return; }
+    session.nickname = nick; session.loggedIn = true;
+    const userId = tg?.initDataUnsafe?.user?.id || 'mock_user';
+    session.userId = userId;
+    await saveMapping(userId, session.aid, nick);
+    document.getElementById('onboard').style.display='none';
+    document.getElementById('main').classList.add('visible');
+    await loadAllData();
+  });
+
+  // ---- load all live data from API ----
+  async function loadAllData() {
+    const [lb, st, tk, pool] = await Promise.all([
+      fetchLeaderboard(),
+      fetchStats(session.aid),
+      fetchTasks(),
+      fetchPool()
+    ]);
+    leaderboard = lb;
+    if (st) myStats = st;
+    tasks = tk;
+    if (pool) document.getElementById('pool-amount').textContent = '$' + pool.total;
+    applyI18n();
+  }
+  nickInput.addEventListener('input', ()=> nickField.classList.remove('invalid'));
+
+  // ---- Nickname edit modal ----
+  function openNickModal(){
+    document.getElementById('nick-edit-input').value = session.nickname || '';
+    document.getElementById('nick-modal').classList.add('visible');
+  }
+  function closeNickModal(){ document.getElementById('nick-modal').classList.remove('visible'); }
+  async function saveNick(){
+    const v = document.getElementById('nick-edit-input').value.trim();
+    if (v.length<2 || v.length>20){ document.getElementById('nick-edit-field').classList.add('invalid'); return; }
+    session.nickname = v;
+    const userId = session.userId || tg?.initDataUnsafe?.user?.id || 'mock_user';
+    await saveMapping(userId, session.aid, v);
+    leaderboard = await fetchLeaderboard();
+    closeNickModal(); applyI18n();
+  }
+
+  // expose for inline handlers
+  window.setLang=setLang; window.switchTab=switchTab;
+  window.openNickModal=openNickModal; window.closeNickModal=closeNickModal; window.saveNick=saveNick;
+
+  // initial i18n for onboarding labels
+  applyI18n();
+
+  // ---- Session restore: skip onboarding if user already mapped ----
+  async function tryRestoreSession() {
+    const userId = tg?.initDataUnsafe?.user?.id;
+    if (!userId) return; // no Telegram context, show onboarding
+    const existing = await fetchUserByTelegramId(String(userId));
+    if (existing && existing.aid && existing.nickname) {
+      session.aid = existing.aid;
+      session.nickname = existing.nickname;
+      session.userId = userId;
+      session.loggedIn = true;
+      document.getElementById('onboard').style.display = 'none';
+      document.getElementById('main').classList.add('visible');
+      await loadAllData();
+    }
+  }
+  tryRestoreSession();
+</script>
+</body>
+</html>
