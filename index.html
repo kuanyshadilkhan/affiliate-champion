@@ -332,7 +332,7 @@
   ];
   // live data, loaded from API after login
   let leaderboard = [];
-  let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0, vol:0, breakdown:{reg:0,ftd:0,eftd:0,vol:0} };
+  let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0, vol:0, breakdown:{reg:0,ftd:0,eftd:0,vol:0}, multipliers:{reg:5,ftd:40,eftd:150,vol:5} };
   let tasks = [];
 
   // ---- i18n ----
@@ -348,7 +348,7 @@
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Задания',
       reward_pts:'баллы', reward_cash:'при', eftd_word:'eFTD', deadline:'до', linkBtn:'Как создать ссылку →', done:'Выполнено', open:'Активно',
       editNickTitle:'Изменить псевдоним', cancel:'Отмена', save:'Сохранить', toNextPrefix:'до',
-      vol:'Объём торгов', breakdownTitle:'Начисление баллов', totalLabel:'Итого', volFormula:'Объём / 100K × 5'
+      vol:'Объём торгов', breakdownTitle:'Начисление баллов', totalLabel:'Итого'
     },
     kz: {
       onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
@@ -361,7 +361,7 @@
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Тапсырмалар',
       reward_pts:'ұпай', reward_cash:'шарт:', eftd_word:'eFTD', deadline:'дейін', linkBtn:'Сілтеме қалай жасау керек →', done:'Орындалды', open:'Белсенді',
       editNickTitle:'Лақап атты өзгерту', cancel:'Болдырмау', save:'Сақтау', toNextPrefix:'дейін',
-      vol:'Сауда айналымы', breakdownTitle:'Ұпайлар есебі', totalLabel:'Барлығы', volFormula:'Айналым / 100K × 5'
+      vol:'Сауда айналымы', breakdownTitle:'Ұпайлар есебі', totalLabel:'Барлығы'
     }
   };
   let lang = 'ru';
@@ -423,12 +423,13 @@
     document.getElementById('prog-next').textContent = ni.nextName ? `${t.toNextPrefix} ${ni.nextName}: ${ni.need}` : 'MAX';
     document.getElementById('prog-fill').style.width = ni.pct + '%';
     const bd = myStats.breakdown;
+    const m = myStats.multipliers;
     const bRows = [
-      { label: `${t.regs} × 5`,  pts: bd.reg  },
-      { label: `FTD × 40`,       pts: bd.ftd  },
-      { label: `eFTD × 150`,     pts: bd.eftd },
-      { label: t.volFormula,     pts: bd.vol  },
-      { label: t.totalLabel,     pts: myStats.points, total: true },
+      { label: `${t.regs} × ${m.reg}`,       pts: bd.reg  },
+      { label: `FTD × ${m.ftd}`,             pts: bd.ftd  },
+      { label: `eFTD × ${m.eftd}`,           pts: bd.eftd },
+      { label: `${t.vol} / 100K × ${m.vol}`, pts: bd.vol  },
+      { label: t.totalLabel, pts: myStats.points, total: true },
     ];
     document.getElementById('breakdown-rows').innerHTML = bRows.map(r =>
       `<div class="breakdown-row${r.total?' total-row':''}">
