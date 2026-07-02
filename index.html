@@ -206,7 +206,7 @@
   <div id="step-aid">
     <div class="field" id="aid-field">
       <label data-i18n="aidLabel">Ваш AID</label>
-      <input type="text" id="aid-input" inputmode="numeric" placeholder="122191" autocomplete="off">
+      <input type="text" id="aid-input" inputmode="numeric" placeholder="Введите AID" autocomplete="off">
       <div class="err" id="aid-err" data-i18n="aidErr">AID не найден в списке партнёров</div>
     </div>
     <div class="checking" id="aid-checking" data-i18n="checking">Проверяем AID...</div>
@@ -248,7 +248,7 @@
         <div class="label" data-i18n="poolLabel">Призовой пул месяца</div>
         <div class="amount" id="pool-amount">$800</div>
       </div>
-      <div class="sub" data-i18n="poolSub">База $500 + $10 за каждый eFTD</div>
+      <div class="sub" data-i18n="poolSub">Призовой пул месяца</div>
     </div>
 
     <!-- Leaderboard -->
@@ -458,7 +458,7 @@
         <div class="lb-rank ${rankClass}">${medal||rank}</div>
         <div class="lb-info">
           <div class="lb-name">${displayNick}</div>
-          <div class="lb-meta"><span class="lb-level-dot" style="background:${levelColor(p.level)}"></span>${p.level} · ${p.eftd} eFTD</div>
+          <div class="lb-meta"><span class="lb-level-dot" style="background:${levelColor(p.level)}"></span>${p.level}</div>
         </div>
         <div class="lb-points"><div class="val">${p.points}</div><div class="unit">${I18N[lang].reward_pts}</div></div>
       </div>`;
