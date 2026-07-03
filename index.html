@@ -101,7 +101,8 @@
   .stat-hero { background: var(--section-bg); border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 14px; }
   .stat-hero .nick-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
   .stat-hero .nick { font-size: 17px; font-weight: 700; }
-  .stat-hero .edit-nick { background: none; border: none; color: var(--accent); font-size: 13px; cursor: pointer; font-weight: 600; }
+  .stat-hero .edit-nick { background: none; border: none; color: var(--accent); cursor: pointer; padding: 4px; line-height: 0; opacity: 0.8; }
+  .stat-hero .edit-nick:active { opacity: 1; }
   .stat-hero .level-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; background: rgba(247,166,0,0.15); color: var(--accent); margin-bottom: 12px; }
   .stat-hero .big-points { font-size: 44px; font-weight: 800; line-height: 1; }
   .stat-hero .big-points span { font-size: 16px; color: var(--hint); font-weight: 600; }
@@ -154,12 +155,18 @@
   .deadline-passed-note { text-align: center; font-size: 12px; color: var(--hint); padding: 8px; background: var(--bg); border-radius: 10px; margin-top: 10px; }
 
   .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--secondary-bg); border-top: 1px solid var(--divider); display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; z-index: 50; }
-  .tabbar button { flex: 1; background: none; border: none; color: var(--hint); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; }
+  .tabbar button { flex: 1; background: none; border: none; color: var(--hint); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; position: relative; }
   .tabbar button.active { color: var(--accent); }
   .tabbar .ico { font-size: 20px; line-height: 1; }
   .footer-note { text-align: center; font-size: 11px; color: var(--hint); padding: 18px 16px 8px; opacity: 0.6; }
   .last-updated-line { text-align: center; font-size: 11px; color: var(--hint); padding: 0 16px 8px; opacity: 0.65; }
   .newcomer-badge { font-size: 9px; font-weight: 700; background: rgba(38,161,123,0.15); color: var(--green); padding: 1px 6px; border-radius: 6px; margin-left: 5px; text-transform: uppercase; vertical-align: middle; }
+  .pool-prize-hint { font-size: 12px; color: var(--green); margin-top: 4px; font-weight: 600; }
+  .tab-badge { position: absolute; top: 2px; right: 14px; background: var(--red); color: #fff; font-size: 9px; font-weight: 700; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; line-height: 14px; text-align: center; display: none; }
+  .skeleton-list { margin-top: 20px; width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
+  .skeleton-row { height: 58px; border-radius: 14px; background: var(--section-bg); overflow: hidden; position: relative; }
+  .skeleton-row::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%); animation: shimmer 1.5s infinite; }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
   .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; z-index: 300; }
   .loading-screen .brand { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
   .logo { height: 24px; width: auto; display: block; }
@@ -192,7 +199,12 @@
 <div class="loading-screen" id="loading-screen">
   <img src="Bybit%20Kazakhstan.svg" class="logo logo-dark" style="height:28px;">
   <img src="Bybit%20Kazakhstan-1.svg" class="logo logo-light" style="height:28px;">
-  <div class="spinner"></div>
+  <div class="skeleton-list">
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row" style="opacity:0.4;"></div>
+  </div>
 </div>
 
 <!-- ============ ONBOARDING ============ -->
@@ -257,6 +269,7 @@
       <div>
         <div class="label" data-i18n="poolLabel">Призовой пул месяца</div>
         <div class="amount" id="pool-amount">$800</div>
+        <div class="pool-prize-hint" id="pool-prize-hint"></div>
       </div>
       <div class="sub" data-i18n="poolSub">Призовой пул месяца</div>
     </div>
@@ -266,7 +279,6 @@
     <div class="tab-content active" id="tab-leaderboard">
       <div class="section-title" data-i18n="lbTitle">Рейтинг за месяц</div>
       <div class="lb-list" id="lb-list"></div>
-      <div class="footer-note" data-i18n="lbNote">Обновляется ежедневно</div>
     </div>
 
     <!-- My Stats -->
@@ -274,7 +286,7 @@
       <div class="stat-hero">
         <div class="nick-row">
           <span class="nick" id="my-nick">GoldTrader_KZ</span>
-          <button class="edit-nick" onclick="openNickModal()" data-i18n="editNick">изменить</button>
+          <button class="edit-nick" onclick="openNickModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         </div>
         <div class="level-badge" id="my-level">🥈 Silver</div>
         <span class="newcomer-badge" id="my-newcomer" data-i18n="newcomer" style="display:none;">Новичок</span>
@@ -291,27 +303,25 @@
         <div class="stat-card"><div class="num" id="s-ftd">5</div><div class="cap" data-i18n="ftd">FTD ($1–99)</div></div>
         <div class="stat-card"><div class="num" id="s-reg">19</div><div class="cap" data-i18n="regs">Регистрации</div></div>
         <div class="stat-card"><div class="num green" id="s-earned">$30</div><div class="cap" data-i18n="earned">Заработано</div></div>
-        <div class="stat-card" style="grid-column:span 2"><div class="num" id="s-vol">—</div><div class="cap" data-i18n="vol">Объём торгов</div></div>
+        <div class="stat-card" id="s-vol-tile" style="grid-column:span 2"><div class="num" id="s-vol">—</div><div class="cap" data-i18n="vol">Объём торгов</div></div>
       </div>
       <div class="stat-card" style="margin-top:8px;">
         <div class="cap" style="margin-bottom:10px;" data-i18n="breakdownTitle">Начисление баллов</div>
         <div id="breakdown-rows"></div>
       </div>
-      <div class="footer-note" data-i18n="statsNote">Данные обновляются раз в день</div>
     </div>
 
     <!-- Tasks -->
     <div class="tab-content" id="tab-tasks">
       <div class="section-title" data-i18n="tasksTitle">Активные задания</div>
       <div id="tasks-list"></div>
-      <div class="footer-note" data-i18n="tasksNote">Не забудьте создать трекинговую ссылку для задания</div>
     </div>
   </div>
 
   <div class="tabbar">
     <button class="active" data-tab="leaderboard" onclick="switchTab('leaderboard', this)"><span class="ico">🏆</span><span data-i18n="tabLb">Рейтинг</span></button>
     <button data-tab="stats" onclick="switchTab('stats', this)"><span class="ico">📊</span><span data-i18n="tabStats">Статистика</span></button>
-    <button data-tab="tasks" onclick="switchTab('tasks', this)"><span class="ico">🎯</span><span data-i18n="tabTasks">Задания</span></button>
+    <button data-tab="tasks" onclick="switchTab('tasks', this)"><span class="ico">🎯</span><span class="tab-badge" id="tasks-badge"></span><span data-i18n="tabTasks">Задания</span></button>
   </div>
 </div>
 
@@ -400,6 +410,12 @@
   let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0, vol:0, isNewcomer:false, breakdown:{reg:0,ftd:0,eftd:0,vol:0,tasks:0}, multipliers:{reg:5,ftd:40,eftd:150,vol:5} };
   let tasks = [];
   let submissions = [];
+  let poolTotal = 0;
+
+  function potentialPrize(rank, pool) {
+    const dist = {1: 0.40, 2: 0.25, 3: 0.15};
+    return dist[rank] ? Math.round(pool * dist[rank]) : null;
+  }
 
   function esc(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -431,7 +447,7 @@
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Соцсеть', viewsLabel:'Просмотры',
       yourLinks:'Ваши ссылки', pending:'На проверке', approved:'Одобрено', rejected:'Отклонено',
       views:'просм.', deadlinePassed:'Приём ссылок завершён', linkErrEmpty:'Заполните ссылку и просмотры',
-      updatedAt:'данные от', newcomer:'Новичок'
+      updatedAt:'данные от', newcomer:'Новичок', prizeHint:'Ваш потенциальный приз'
     },
     kz: {
       onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
@@ -449,7 +465,7 @@
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Әлеуметтік желі', viewsLabel:'Қаралымдар',
       yourLinks:'Сіздің сілтемелеріңіз', pending:'Тексерілуде', approved:'Мақұлданды', rejected:'Қабылданбады',
       views:'қаралым', deadlinePassed:'Сілтемелер қабылдау аяқталды', linkErrEmpty:'Сілтеме мен қаралымды толтырыңыз',
-      updatedAt:'деректер:', newcomer:'Жаңа'
+      updatedAt:'деректер:', newcomer:'Жаңа', prizeHint:'Болжамды сыйлық'
     },
     en: {
       onbTitle:'Affiliate Champions', onbLead:'Enter your AID to join the affiliate leaderboard',
@@ -467,7 +483,7 @@
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Social network', viewsLabel:'Views',
       yourLinks:'Your links', pending:'Pending', approved:'Approved', rejected:'Rejected',
       views:'views', deadlinePassed:'Submission deadline passed', linkErrEmpty:'Fill in the link and views',
-      updatedAt:'data from', newcomer:'Newcomer'
+      updatedAt:'data from', newcomer:'Newcomer', prizeHint:'Your potential prize'
     }
   };
   let lang = 'kz';
@@ -522,6 +538,8 @@
     document.getElementById('s-reg').textContent = myStats.regs;
     document.getElementById('s-earned').textContent = '$'+myStats.earned;
     document.getElementById('s-vol').textContent = formatVol(myStats.vol);
+    const volTile = document.getElementById('s-vol-tile');
+    if (volTile) volTile.style.display = myStats.vol > 0 ? '' : 'none';
     const lvlBadgeMedal = {Starter:'🌱',Bronze:'🥉',Silver:'🥈',Gold:'🥇',Elite:'💎'}[myStats.level]||'';
     document.getElementById('my-level').textContent = `${lvlBadgeMedal} ${myStats.level}`;
     const newcomerEl = document.getElementById('my-newcomer');
@@ -537,9 +555,12 @@
       { label: `FTD × ${m.ftd}`,             pts: bd.ftd   },
       { label: `eFTD × ${m.eftd}`,           pts: bd.eftd  },
       { label: `${t.vol} / 100K × ${m.vol}`, pts: bd.vol   },
-      ...(bd.tasks > 0 ? [{ label: t.taskPts, pts: bd.tasks }] : []),
+      { label: t.taskPts,                    pts: bd.tasks  },
       { label: t.totalLabel, pts: myStats.points, total: true },
-    ];
+    ].filter(r => r.total || r.pts > 0);
+    const prize = potentialPrize(myStats.rank, poolTotal);
+    const prizeEl = document.getElementById('pool-prize-hint');
+    if (prizeEl) prizeEl.textContent = prize ? t.prizeHint + ': ~$' + prize : '';
     document.getElementById('breakdown-rows').innerHTML = bRows.map(r =>
       `<div class="breakdown-row${r.total?' total-row':''}">
         <span class="br-label">${r.label}</span>
@@ -700,9 +721,12 @@
     if (st) myStats = st;
     tasks = tk;
     submissions = subs;
-    if (pool) document.getElementById('pool-amount').textContent = '$' + pool.total;
+    if (pool) { document.getElementById('pool-amount').textContent = '$' + pool.total; poolTotal = pool.total; }
     const luEl = document.getElementById('last-updated-line');
     if (luEl) luEl.textContent = lbData.lastUpdated ? I18N[lang].updatedAt + ' ' + lbData.lastUpdated : '';
+    const activeTasks = tasks.filter(function(t){ return t.status === 'open' && !t.deadlinePassed; }).length;
+    const badgeEl = document.getElementById('tasks-badge');
+    if (badgeEl) { badgeEl.textContent = activeTasks; badgeEl.style.display = activeTasks > 0 ? 'block' : 'none'; }
     applyI18n();
   }
   nickInput.addEventListener('input', ()=> nickField.classList.remove('invalid'));
