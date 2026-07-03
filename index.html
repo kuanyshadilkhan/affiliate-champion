@@ -197,6 +197,13 @@
 
 <!-- ============ ONBOARDING ============ -->
 <div class="onboard" id="onboard" style="display:none;">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+    <div class="lang-toggle">
+      <button data-lang="kz" class="active" onclick="setLang('kz')">KZ</button>
+      <button data-lang="ru" onclick="setLang('ru')">RU</button>
+      <button data-lang="en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
   <div style="display:flex;justify-content:center;margin-bottom:4px;">
     <img src="Bybit%20Kazakhstan.svg" class="logo logo-dark" style="height:26px;">
     <img src="Bybit%20Kazakhstan-1.svg" class="logo logo-light" style="height:26px;">
@@ -239,8 +246,9 @@
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="refresh-btn" id="refresh-btn" onclick="refreshData()" title="Обновить">↻</button>
         <div class="lang-toggle">
-          <button id="lang-ru" class="active" onclick="setLang('ru')">RU</button>
-          <button id="lang-kz" onclick="setLang('kz')">KZ</button>
+          <button data-lang="kz" class="active" onclick="setLang('kz')">KZ</button>
+          <button data-lang="ru" onclick="setLang('ru')">RU</button>
+          <button data-lang="en" onclick="setLang('en')">EN</button>
         </div>
       </div>
     </div>
@@ -442,9 +450,27 @@
       yourLinks:'Сіздің сілтемелеріңіз', pending:'Тексерілуде', approved:'Мақұлданды', rejected:'Қабылданбады',
       views:'қаралым', deadlinePassed:'Сілтемелер қабылдау аяқталды', linkErrEmpty:'Сілтеме мен қаралымды толтырыңыз',
       updatedAt:'деректер:', newcomer:'Жаңа'
+    },
+    en: {
+      onbTitle:'Affiliate Champions', onbLead:'Enter your AID to join the affiliate leaderboard',
+      aidLabel:'Your AID', aidErr:'AID not found in the affiliate list', checking:'Checking AID...', continueBtn:'Continue',
+      nickLabel:'Choose a nickname for the leaderboard', nickErr:'2 to 20 characters', nickHint:'Other affiliates will see this name. No need to use your real name.', startBtn:'Join the leaderboard',
+      appName:'Affiliate Champions', poolLabel:'Monthly prize pool', poolSub:'Base $500 + $10 per eFTD',
+      lbTitle:'Monthly leaderboard', lbNote:'Updated daily',
+      pts:'pts', yourRank:'Your rank', of:'of', ftd:'FTD ($1–99)', regs:'Registrations', earned:'Earned', statsNote:'Data updates once a day', editNick:'edit',
+      tasksTitle:'Active tasks', tasksNote:'Don\'t forget to create a tracking link for the task',
+      tabLb:'Leaderboard', tabStats:'Stats', tabTasks:'Tasks',
+      reward_pts:'pts', reward_cash:'at', eftd_word:'eFTD', deadline:'until', linkBtn:'How to create a link →', done:'Done', open:'Active',
+      editNickTitle:'Edit nickname', cancel:'Cancel', save:'Save', toNextPrefix:'to',
+      vol:'Trading volume', breakdownTitle:'Points breakdown', totalLabel:'Total', taskPts:'Tasks (approved)',
+      addLink:'Add link', submitBtn:'Submit', submitting:'Submitting...',
+      linkPlaceholder:'https://youtube.com/...', socialLabel:'Social network', viewsLabel:'Views',
+      yourLinks:'Your links', pending:'Pending', approved:'Approved', rejected:'Rejected',
+      views:'views', deadlinePassed:'Submission deadline passed', linkErrEmpty:'Fill in the link and views',
+      updatedAt:'data from', newcomer:'Newcomer'
     }
   };
-  let lang = 'ru';
+  let lang = 'kz';
 
   function medalFor(r){ return r===1?'🥇':r===2?'🥈':r===3?'🥉':''; }
   function levelColor(n){ return (LEVELS.find(l=>l.name===n)||{}).color||'#8a8f98'; }
@@ -611,8 +637,9 @@
   }
   function setLang(l){
     lang=l;
-    document.getElementById('lang-ru').classList.toggle('active', l==='ru');
-    document.getElementById('lang-kz').classList.toggle('active', l==='kz');
+    document.querySelectorAll('[data-lang]').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.lang === l);
+    });
     document.documentElement.lang=l;
     applyI18n();
   }
