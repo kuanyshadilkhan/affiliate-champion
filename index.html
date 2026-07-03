@@ -159,6 +159,7 @@
   .tabbar .ico { font-size: 20px; line-height: 1; }
   .footer-note { text-align: center; font-size: 11px; color: var(--hint); padding: 18px 16px 8px; opacity: 0.6; }
   .last-updated-line { text-align: center; font-size: 11px; color: var(--hint); padding: 0 16px 8px; opacity: 0.65; }
+  .newcomer-badge { font-size: 9px; font-weight: 700; background: rgba(38,161,123,0.15); color: var(--green); padding: 1px 6px; border-radius: 6px; margin-left: 5px; text-transform: uppercase; vertical-align: middle; }
   .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; z-index: 300; }
   .loading-screen .brand { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
   .logo { height: 24px; width: auto; display: block; }
@@ -268,6 +269,7 @@
           <button class="edit-nick" onclick="openNickModal()" data-i18n="editNick">изменить</button>
         </div>
         <div class="level-badge" id="my-level">🥈 Silver</div>
+        <span class="newcomer-badge" id="my-newcomer" data-i18n="newcomer" style="display:none;">Новичок</span>
         <div class="big-points"><span id="my-points-num">420</span> <span data-i18n="pts">очков</span></div>
         <div class="rank-line"><span data-i18n="yourRank">Ваше место</span>: <b id="my-rank">4</b> <span data-i18n="of">из</span> <span id="my-total">—</span></div>
         <div class="aid-line">AID: <span id="my-aid">122191</span></div>
@@ -387,7 +389,7 @@
   ];
   // live data, loaded from API after login
   let leaderboard = [];
-  let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0, vol:0, breakdown:{reg:0,ftd:0,eftd:0,vol:0,tasks:0}, multipliers:{reg:5,ftd:40,eftd:150,vol:5} };
+  let myStats = { eftd:0, ftd:0, regs:0, earned:0, points:0, level:'Starter', rank:0, total:0, vol:0, isNewcomer:false, breakdown:{reg:0,ftd:0,eftd:0,vol:0,tasks:0}, multipliers:{reg:5,ftd:40,eftd:150,vol:5} };
   let tasks = [];
   let submissions = [];
 
@@ -421,7 +423,7 @@
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Соцсеть', viewsLabel:'Просмотры',
       yourLinks:'Ваши ссылки', pending:'На проверке', approved:'Одобрено', rejected:'Отклонено',
       views:'просм.', deadlinePassed:'Приём ссылок завершён', linkErrEmpty:'Заполните ссылку и просмотры',
-      updatedAt:'данные от'
+      updatedAt:'данные от', newcomer:'Новичок'
     },
     kz: {
       onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
@@ -439,7 +441,7 @@
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Әлеуметтік желі', viewsLabel:'Қаралымдар',
       yourLinks:'Сіздің сілтемелеріңіз', pending:'Тексерілуде', approved:'Мақұлданды', rejected:'Қабылданбады',
       views:'қаралым', deadlinePassed:'Сілтемелер қабылдау аяқталды', linkErrEmpty:'Сілтеме мен қаралымды толтырыңыз',
-      updatedAt:'деректер:'
+      updatedAt:'деректер:', newcomer:'Жаңа'
     }
   };
   let lang = 'ru';
@@ -469,7 +471,7 @@
         <div class="lb-rank ${rankClass}">${medal||rank}</div>
         <div class="lb-info">
           <div class="lb-name">${esc(displayNick)}</div>
-          <div class="lb-meta"><span class="lb-level-dot" style="background:${levelColor(p.level)}"></span>${esc(p.level)}</div>
+          <div class="lb-meta"><span class="lb-level-dot" style="background:${levelColor(p.level)}"></span>${esc(p.level)}${p.isNewcomer ? `<span class="newcomer-badge">${I18N[lang].newcomer}</span>` : ''}</div>
         </div>
         <div class="lb-points"><div class="val">${p.points}</div><div class="unit">${I18N[lang].reward_pts}</div></div>
       </div>`;
@@ -496,6 +498,8 @@
     document.getElementById('s-vol').textContent = formatVol(myStats.vol);
     const lvlBadgeMedal = {Starter:'🌱',Bronze:'🥉',Silver:'🥈',Gold:'🥇',Elite:'💎'}[myStats.level]||'';
     document.getElementById('my-level').textContent = `${lvlBadgeMedal} ${myStats.level}`;
+    const newcomerEl = document.getElementById('my-newcomer');
+    if (newcomerEl) newcomerEl.style.display = myStats.isNewcomer ? 'inline-block' : 'none';
     const ni = nextLevelInfo(myStats.points);
     document.getElementById('prog-cur').textContent = myStats.level;
     document.getElementById('prog-next').textContent = ni.nextName ? `${t.toNextPrefix} ${ni.nextName}: ${ni.need}` : 'MAX';

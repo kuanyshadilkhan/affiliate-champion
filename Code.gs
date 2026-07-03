@@ -52,11 +52,12 @@ function affiliateRows() {
   var grouped = {};
   raw.forEach(function(r) {
     var aid = String(r['AID']).trim();
-    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0 };
+    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0, approvedDate: '' };
     grouped[aid].eFTD += Number(r['eFTD']) || 0;
     grouped[aid].ftd  += Number(r['ftd']) || 0;
     grouped[aid].reg  += Number(r['Reg Users']) || 0;
     grouped[aid].vol  += Number(r['Vol_Portal_Client_Non_MT5']) || 0;
+    if (!grouped[aid].approvedDate && r['Aff_Approved_date']) grouped[aid].approvedDate = String(r['Aff_Approved_date']);
   });
   return Object.keys(grouped).map(function(k) { return grouped[k]; });
 }
@@ -75,6 +76,13 @@ function levelFor(points, c) {
   if (points >= (c.level_silver || 300))  return 'Silver';
   if (points >= (c.level_bronze || 100))  return 'Bronze';
   return 'Starter';
+}
+
+function isNewcomer(approvedDateStr) {
+  if (!approvedDateStr) return false;
+  var today = new Date();
+  var d = new Date(approvedDateStr);
+  return !isNaN(d) && d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
 }
 
 function aidExists(aid) {
@@ -124,7 +132,7 @@ function getLeaderboard() {
   var taskPtsMap = getAllTaskPoints();
   return affiliateRows().map(function(a) {
     var pts = calcPoints(a, c) + (taskPtsMap[a.AID] || 0);
-    return { aid: a.AID, nick: nicks[a.AID] || ('AID ' + a.AID), points: pts, eftd: a.eFTD, level: levelFor(pts, c) };
+    return { aid: a.AID, nick: nicks[a.AID] || ('AID ' + a.AID), points: pts, eftd: a.eFTD, level: levelFor(pts, c), isNewcomer: isNewcomer(a.approvedDate) };
   }).sort(function(x, y) { return y.points - x.points; });
 }
 
@@ -147,6 +155,8 @@ function getStats(aid) {
     aid: aidStr, points: pts, eftd: a.eFTD, ftd: a.ftd, regs: a.reg, vol: a.vol,
     earned: a.eFTD * (c.usd_per_eftd || 10),
     level: levelFor(pts, c), rank: rank, total: lb.length,
+    isNewcomer: isNewcomer(a.approvedDate),
+    approvedDate: String(a.approvedDate || ''),
     breakdown: {
       reg:  a.reg  * (c.points_per_reg  || 0),
       ftd:  a.ftd  * (c.points_per_ftd  || 0),
@@ -165,11 +175,24 @@ function getStats(aid) {
 
 function getPool() {
   var c = getConfig();
+  var nicks = nickMap();
+  var taskPtsMap = getAllTaskPoints();
   var base = c.pool_base || 500;
   var perEftd = c.pool_per_eftd || 10;
   var totalEftd = 0;
-  affiliateRows().forEach(function(a) { totalEftd += a.eFTD; });
-  return { base: base, eftd: totalEftd, topup: totalEftd * perEftd, total: base + totalEftd * perEftd };
+  var bestNewcomer = null;
+  var bestNewcomerPts = -1;
+  affiliateRows().forEach(function(a) {
+    totalEftd += a.eFTD;
+    if (isNewcomer(a.approvedDate)) {
+      var pts = calcPoints(a, c) + (taskPtsMap[a.AID] || 0);
+      if (pts > bestNewcomerPts) {
+        bestNewcomerPts = pts;
+        bestNewcomer = { aid: a.AID, nick: nicks[a.AID] || ('AID ' + a.AID), points: pts };
+      }
+    }
+  });
+  return { base: base, eftd: totalEftd, topup: totalEftd * perEftd, total: base + totalEftd * perEftd, bestNewcomer: bestNewcomer };
 }
 
 function getTasks() {
