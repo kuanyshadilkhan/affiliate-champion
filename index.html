@@ -158,6 +158,7 @@
   .tabbar button.active { color: var(--accent); }
   .tabbar .ico { font-size: 20px; line-height: 1; }
   .footer-note { text-align: center; font-size: 11px; color: var(--hint); padding: 18px 16px 8px; opacity: 0.6; }
+  .last-updated-line { text-align: center; font-size: 11px; color: var(--hint); padding: 0 16px 8px; opacity: 0.65; }
   .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; z-index: 300; }
   .loading-screen .brand { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
   .logo { height: 24px; width: auto; display: block; }
@@ -250,6 +251,7 @@
       </div>
       <div class="sub" data-i18n="poolSub">Призовой пул месяца</div>
     </div>
+    <div class="last-updated-line" id="last-updated-line"></div>
 
     <!-- Leaderboard -->
     <div class="tab-content active" id="tab-leaderboard">
@@ -346,8 +348,8 @@
     } catch (e) { return false; }
   }
   async function fetchLeaderboard() {
-    try { const d = await apiGet({ action: 'leaderboard' }); return d.leaderboard || []; }
-    catch (e) { return []; }
+    try { const d = await apiGet({ action: 'leaderboard' }); return { list: d.leaderboard || [], lastUpdated: d.last_updated || '' }; }
+    catch (e) { return { list: [], lastUpdated: '' }; }
   }
   async function fetchStats(aid) {
     try { const d = await apiGet({ action: 'stats', aid: aid }); return d.stats || null; }
@@ -418,7 +420,8 @@
       addLink:'Добавить ссылку', submitBtn:'Отправить', submitting:'Отправляем...',
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Соцсеть', viewsLabel:'Просмотры',
       yourLinks:'Ваши ссылки', pending:'На проверке', approved:'Одобрено', rejected:'Отклонено',
-      views:'просм.', deadlinePassed:'Приём ссылок завершён', linkErrEmpty:'Заполните ссылку и просмотры'
+      views:'просм.', deadlinePassed:'Приём ссылок завершён', linkErrEmpty:'Заполните ссылку и просмотры',
+      updatedAt:'данные от'
     },
     kz: {
       onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
@@ -435,7 +438,8 @@
       addLink:'Сілтеме қосу', submitBtn:'Жіберу', submitting:'Жіберілуде...',
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Әлеуметтік желі', viewsLabel:'Қаралымдар',
       yourLinks:'Сіздің сілтемелеріңіз', pending:'Тексерілуде', approved:'Мақұлданды', rejected:'Қабылданбады',
-      views:'қаралым', deadlinePassed:'Сілтемелер қабылдау аяқталды', linkErrEmpty:'Сілтеме мен қаралымды толтырыңыз'
+      views:'қаралым', deadlinePassed:'Сілтемелер қабылдау аяқталды', linkErrEmpty:'Сілтеме мен қаралымды толтырыңыз',
+      updatedAt:'деректер:'
     }
   };
   let lang = 'ru';
@@ -654,18 +658,20 @@
 
   // ---- load all live data from API ----
   async function loadAllData() {
-    const [lb, st, tk, pool, subs] = await Promise.all([
+    const [lbData, st, tk, pool, subs] = await Promise.all([
       fetchLeaderboard(),
       fetchStats(session.aid),
       fetchTasks(),
       fetchPool(),
       fetchSubmissions(session.aid)
     ]);
-    leaderboard = lb;
+    leaderboard = lbData.list;
     if (st) myStats = st;
     tasks = tk;
     submissions = subs;
     if (pool) document.getElementById('pool-amount').textContent = '$' + pool.total;
+    const luEl = document.getElementById('last-updated-line');
+    if (luEl) luEl.textContent = lbData.lastUpdated ? I18N[lang].updatedAt + ' ' + lbData.lastUpdated : '';
     applyI18n();
   }
   nickInput.addEventListener('input', ()=> nickField.classList.remove('invalid'));
@@ -683,7 +689,7 @@
     const ok = await saveMapping(userId, session.aid, v);
     if (!ok) return;
     session.nickname = v;
-    leaderboard = await fetchLeaderboard();
+    leaderboard = (await fetchLeaderboard()).list;
     closeNickModal(); applyI18n();
   }
 

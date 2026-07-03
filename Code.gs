@@ -6,7 +6,7 @@
 function doGet(e) {
   var action = e.parameter.action;
   if (action === 'validateAID') return json({ valid: aidExists(e.parameter.aid) });
-  if (action === 'leaderboard') return json({ leaderboard: getLeaderboard() });
+  if (action === 'leaderboard') return json({ leaderboard: getLeaderboard(), last_updated: getLastUpdated() });
   if (action === 'stats')       return json({ stats: getStats(e.parameter.aid) });
   if (action === 'tasks')       return json({ tasks: getTasks() });
   if (action === 'pool')        return json({ pool: getPool() });
@@ -197,6 +197,20 @@ function submitLink(aid, taskId, link, social, views) {
   if (!sh) return;
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
   sh.appendRow([String(aid).trim(), String(taskId).trim(), link, social, Number(views) || 0, now, 'pending', '']);
+
+  var taskTitle = String(taskId).trim();
+  try {
+    var taskRow = rows('tasks').filter(function(t){ return String(t['id']).trim() === taskTitle; })[0];
+    if (taskRow && taskRow['title_ru']) taskTitle = taskRow['title_ru'];
+  } catch(e) {}
+  notifyManager(
+    '📋 Новый сабмит таска\n\n' +
+    'AID: ' + String(aid).trim() + '\n' +
+    'Таск: ' + taskTitle + '\n' +
+    'Соцсеть: ' + social + '\n' +
+    'Просмотры: ' + (Number(views) || 0) + '\n' +
+    'Ссылка: ' + link
+  );
 }
 
 function getSubmissions(aid) {
@@ -231,6 +245,42 @@ function getByUserId(userId) {
     }
   }
   return null;
+}
+
+function notifyManager(text) {
+  var token = PropertiesService.getScriptProperties().getProperty('BOT_TOKEN');
+  if (!token) return;
+  try {
+    UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ chat_id: '8660141727', text: text })
+    });
+  } catch(e) {}
+}
+
+function getLastUpdated() {
+  var sh = sheet('config');
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === 'last_updated') return String(data[i][1] || '');
+  }
+  return '';
+}
+
+function onEdit(e) {
+  if (!e || !e.source) return;
+  if (e.source.getActiveSheet().getName() !== 'raw_export') return;
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy HH:mm');
+  var sh = sheet('config');
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === 'last_updated') {
+      sh.getRange(i + 1, 2).setValue(now);
+      return;
+    }
+  }
+  sh.appendRow(['last_updated', now]);
 }
 
 function saveMapping(userId, aid, nick) {
