@@ -609,10 +609,10 @@
 
       return `<div class="task-card">
         <div class="task-head">
-          <div class="task-title">${esc(task.title[lang])}</div>
+          <div class="task-title">${esc(task.title[lang] || task.title.ru)}</div>
           <div class="task-badge ${task.status==='open'?'open':'done'}">${task.status==='open'?t.open:t.done}</div>
         </div>
-        <div class="task-desc">${esc(task.desc[lang])}</div>
+        <div class="task-desc">${esc(task.desc[lang] || task.desc.ru)}</div>
         <div class="task-rewards">
           <div class="reward-chip"><div class="r-val pts">+${task.pts}</div><div class="r-cap">${t.reward_pts}</div></div>
           <div class="reward-chip"><div class="r-val cash">$${task.cash}</div><div class="r-cap">${t.reward_cash} ${task.threshold}+ ${t.eftd_word}</div></div>

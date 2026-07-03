@@ -206,8 +206,8 @@ function getTasks() {
       : String(dl || '');
     return {
       id: t['id'], status: t['status'] || 'open',
-      title: { ru: t['title_ru'], kz: t['title_kz'] },
-      desc:  { ru: t['desc_ru'],  kz: t['desc_kz'] },
+      title: { ru: t['title_ru'], kz: t['title_kz'], en: t['title_en'] || t['title_ru'] },
+      desc:  { ru: t['desc_ru'],  kz: t['desc_kz'],  en: t['desc_en']  || t['desc_ru']  },
       pts: Number(t['pts']) || 0, cash: Number(t['cash']) || 0,
       threshold: Number(t['threshold']) || 0,
       deadline: dlStr, deadlinePassed: dlPassed
