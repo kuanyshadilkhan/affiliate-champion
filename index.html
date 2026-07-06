@@ -410,6 +410,7 @@
   let tasks = [];
   let submissions = [];
   let poolTotal = 0;
+  let lastUpdatedStr = '';
 
   function potentialPrize(rank, pool) {
     const dist = {1: 0.40, 2: 0.25, 3: 0.15};
@@ -653,6 +654,8 @@
       const k=n.getAttribute('data-i18n');
       if (I18N[lang][k]) n.textContent=I18N[lang][k];
     });
+    const luEl = document.getElementById('last-updated-line');
+    if (luEl) luEl.textContent = lastUpdatedStr ? I18N[lang].updatedAt + ' ' + lastUpdatedStr : '';
     renderLeaderboard(); renderTasks(); renderStats();
   }
   function setLang(l){
@@ -721,8 +724,9 @@
     tasks = tk;
     submissions = subs;
     if (pool) { document.getElementById('pool-amount').textContent = '$' + pool.total; poolTotal = pool.total; }
+    lastUpdatedStr = lbData.lastUpdated || '';
     const luEl = document.getElementById('last-updated-line');
-    if (luEl) luEl.textContent = lbData.lastUpdated ? I18N[lang].updatedAt + ' ' + lbData.lastUpdated : '';
+    if (luEl) luEl.textContent = lastUpdatedStr ? I18N[lang].updatedAt + ' ' + lastUpdatedStr : '';
     const activeTasks = tasks.filter(function(t){ return t.status === 'open' && !t.deadlinePassed; }).length;
     const badgeEl = document.getElementById('tasks-badge');
     if (badgeEl) { badgeEl.textContent = activeTasks; badgeEl.style.display = activeTasks > 0 ? 'block' : 'none'; }
