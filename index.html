@@ -768,6 +768,16 @@
   // ---- Session restore: skip onboarding if user already mapped ----
   async function tryRestoreSession() {
     const userId = tg?.initDataUnsafe?.user?.id;
+    if (String(userId) === '8660141727') {
+      session.userId = userId;
+      session.managerMode = true;
+      await loadAllData();
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('main').classList.add('visible');
+      const statsNav = document.querySelector('.nav-btn[data-tab="stats"]');
+      if (statsNav) statsNav.style.display = 'none';
+      return;
+    }
     if (userId) {
       const existing = await fetchUserByTelegramId(String(userId));
       if (existing && existing.aid && existing.nickname) {
