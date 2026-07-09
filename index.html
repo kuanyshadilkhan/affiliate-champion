@@ -712,6 +712,8 @@
 
   // ---- load all live data from API ----
   async function loadAllData() {
+    const userId = session.userId || tg?.initDataUnsafe?.user?.id;
+    if (userId) apiGet({ action: 'ping', userId: userId }).catch(function(){});
     const [lbData, st, tk, pool, subs] = await Promise.all([
       fetchLeaderboard(),
       fetchStats(session.aid),

@@ -14,6 +14,7 @@ function doGet(e) {
   if (action === 'getByUserId')   return json({ data: getByUserId(e.parameter.userId) });
   if (action === 'submitLink')    { submitLink(e.parameter.aid, e.parameter.taskId, e.parameter.link, e.parameter.social, e.parameter.views); return json({ ok: true }); }
   if (action === 'getSubmissions') return json({ submissions: getSubmissions(e.parameter.aid) });
+  if (action === 'ping') { pingUser(e.parameter.userId); return json({ ok: true }); }
   return json({ error: 'unknown action' });
 }
 
@@ -44,10 +45,12 @@ function getConfig() {
 }
 
 // read raw_export, skip "Sum" row, GROUP BY AID and SUM metrics (dupes = different commission rows)
+var EXCLUDED_AIDS = ['160869', '161151'];
+
 function affiliateRows() {
   var raw = rows('raw_export').filter(function(r) {
     var aid = String(r['AID']).trim();
-    return aid && aid.toLowerCase() !== 'sum';
+    return aid && aid.toLowerCase() !== 'sum' && EXCLUDED_AIDS.indexOf(aid) === -1;
   });
   var grouped = {};
   raw.forEach(function(r) {
@@ -82,7 +85,9 @@ function isNewcomer(approvedDateStr) {
   if (!approvedDateStr) return false;
   var today = new Date();
   var d = new Date(approvedDateStr);
-  return !isNaN(d) && d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+  if (isNaN(d)) return false;
+  var diff = today - d;
+  return diff >= 0 && diff <= 90 * 24 * 60 * 60 * 1000;
 }
 
 function aidExists(aid) {
@@ -306,15 +311,78 @@ function onEdit(e) {
   sh.appendRow(['last_updated', now]);
 }
 
+// ── ANNOUNCEMENT ──────────────────────────────────────────────────────
+// Run from the editor after updating raw_export. Copy the result from Logs.
+function generateAnnouncement() {
+  var lb = getLeaderboard();
+  var pool = getPool();
+  var prizes = [0.40, 0.25, 0.15];
+  var medals = ['🥇', '🥈', '🥉'];
+  var top = lb.slice(0, 3);
+  var lines = [];
+  top.forEach(function(p, i) {
+    var prize = Math.round(pool.total * prizes[i]);
+    lines.push(medals[i] + ' ' + p.nick + ' — ' + p.points + ' ұпай (~$' + prize + ')');
+  });
+  var daysLeft = daysLeftInMonth();
+  var text =
+    '📊 Affiliate Champions — ағымдағы рейтинг\n\n' +
+    lines.join('\n') +
+    '\n\nЖүлде қоры: $' + pool.total +
+    ' · Айдың соңына ' + daysLeft + ' күн қалды\n' +
+    '👉 https://kuanyshadilkhan.github.io/affiliate-champion/';
+  Logger.log(text);
+}
+
+function daysLeftInMonth() {
+  var now = new Date();
+  var last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return last.getDate() - now.getDate();
+}
+
+// ── DAILY REMINDER ────────────────────────────────────────────────────
+// Sends a reminder to the manager at 10:00 to update raw_export.
+function dailyReminder() {
+  notifyManager('📋 Деректерді жаңартуды ұмытпаңыз — raw_export парағын жүктеп салыңыз.');
+}
+
+// Run ONCE from the editor to set up the daily trigger at 10:00.
+function createDailyReminderTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'dailyReminder') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('dailyReminder')
+    .timeBased()
+    .atHour(10)
+    .everyDays(1)
+    .create();
+  Logger.log('Trigger created: dailyReminder at 10:00');
+}
+
 function saveMapping(userId, aid, nick) {
   var sh = sheet('mapping');
   var data = sh.getDataRange().getValues();
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === String(userId).trim()) {
       sh.getRange(i + 1, 2).setValue(aid);
       sh.getRange(i + 1, 3).setValue(nick);
+      sh.getRange(i + 1, 5).setValue(now); // last_seen_at
       return;
     }
   }
-  sh.appendRow([userId, aid, nick]);
+  sh.appendRow([userId, aid, nick, now, now]); // registered_at, last_seen_at
+}
+
+function pingUser(userId) {
+  if (!userId) return;
+  var sh = sheet('mapping');
+  var data = sh.getDataRange().getValues();
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === String(userId).trim()) {
+      sh.getRange(i + 1, 5).setValue(now); // last_seen_at
+      return;
+    }
+  }
 }
