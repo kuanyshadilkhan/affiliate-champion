@@ -61,7 +61,7 @@ function affiliateRows() {
     grouped[aid].reg  += Number(r['Reg Users']) || 0;
     grouped[aid].vol  += Number(r['Vol_Portal_Client_Non_MT5']) || 0;
     if (!grouped[aid].approvedDate && r['Aff_Approved_date']) grouped[aid].approvedDate = String(r['Aff_Approved_date']);
-    if (!grouped[aid].uid && r['UID']) grouped[aid].uid = String(r['UID']).trim();
+    if (!grouped[aid].uid && r['AFF_UID']) grouped[aid].uid = String(r['AFF_UID']).trim();
   });
   return Object.keys(grouped).map(function(k) { return grouped[k]; });
 }
