@@ -226,9 +226,9 @@
   <!-- Step 1: AID -->
   <div id="step-aid">
     <div class="field" id="aid-field">
-      <label data-i18n="aidLabel">Ваш AID</label>
-      <input type="text" id="aid-input" inputmode="numeric" placeholder="Введите AID" autocomplete="off">
-      <div class="err" id="aid-err" data-i18n="aidErr">AID не найден в списке партнёров</div>
+      <label data-i18n="aidLabel">Ваш AID или UID</label>
+      <input type="text" id="aid-input" inputmode="numeric" placeholder="Введите AID или UID" autocomplete="off">
+      <div class="err" id="aid-err" data-i18n="aidErr">AID/UID не найден в списке партнёров</div>
     </div>
     <div class="checking" id="aid-checking" data-i18n="checking">Проверяем AID...</div>
     <button class="btn-primary" id="aid-next" data-i18n="continueBtn">Продолжить</button>
@@ -357,7 +357,7 @@
   async function validateAID(aid) {
     try {
       const d = await apiGet({ action: 'validateAID', aid: aid });
-      return !!d.valid;
+      return d.valid ? (d.aid || aid) : false;
     } catch (e) { return false; }
   }
   async function saveMapping(userId, aid, nickname) {
@@ -433,7 +433,7 @@
   const I18N = {
     ru: {
       onbTitle:'Affiliate Champions', onbLead:'Введите ваш AID для входа в рейтинг партнёров',
-      aidLabel:'Ваш AID', aidErr:'AID не найден в списке партнёров', checking:'Проверяем AID...', continueBtn:'Продолжить',
+      aidLabel:'Ваш AID или UID', aidErr:'AID/UID не найден в списке партнёров', checking:'Проверяем...', continueBtn:'Продолжить',
       nickLabel:'Придумайте псевдоним для рейтинга', nickErr:'От 2 до 20 символов', nickHint:'Это имя увидят другие партнёры в рейтинге. Настоящее имя указывать не нужно.', startBtn:'Войти в рейтинг',
       appName:'Affiliate Champions', poolLabel:'Призовой пул месяца', poolSub:'База $500 + $10 за каждый eFTD',
       lbTitle:'Рейтинг за месяц', lbNote:'Обновляется ежедневно',
@@ -451,7 +451,7 @@
     },
     kz: {
       onbTitle:'Affiliate Champions', onbLead:'Серіктестер рейтингіне кіру үшін AID енгізіңіз',
-      aidLabel:'Сіздің AID', aidErr:'AID серіктестер тізімінде табылмады', checking:'AID тексерілуде...', continueBtn:'Жалғастыру',
+      aidLabel:'AID немесе UID', aidErr:'AID/UID серіктестер тізімінде табылмады', checking:'Тексерілуде...', continueBtn:'Жалғастыру',
       nickLabel:'Рейтинг үшін лақап ат ойлап табыңыз', nickErr:'2-ден 20 таңбаға дейін', nickHint:'Бұл атты рейтингте басқа серіктестер көреді. Нақты атыңызды көрсету қажет емес.', startBtn:'Рейтингке кіру',
       appName:'Affiliate Champions', poolLabel:'Айлық жүлде қоры', poolSub:'Негізі $500 + әр eFTD үшін $10',
       lbTitle:'Айлық рейтинг', lbNote:'Күн сайын жаңарады',
@@ -469,7 +469,7 @@
     },
     en: {
       onbTitle:'Affiliate Champions', onbLead:'Enter your AID to join the affiliate leaderboard',
-      aidLabel:'Your AID', aidErr:'AID not found in the affiliate list', checking:'Checking AID...', continueBtn:'Continue',
+      aidLabel:'Your AID or UID', aidErr:'AID/UID not found in the affiliate list', checking:'Checking...', continueBtn:'Continue',
       nickLabel:'Choose a nickname for the leaderboard', nickErr:'2 to 20 characters', nickHint:'Other affiliates will see this name. No need to use your real name.', startBtn:'Join the leaderboard',
       appName:'Affiliate Champions', poolLabel:'Monthly prize pool', poolSub:'Base $500 + $10 per eFTD',
       lbTitle:'Monthly leaderboard', lbNote:'Updated daily',
@@ -685,10 +685,10 @@
     aidField.classList.remove('invalid');
     if (!aid) { aidField.classList.add('invalid'); return; }
     aidNext.disabled = true; aidChecking.style.display = 'block';
-    const valid = await validateAID(aid);   // <-- Sheets check hook
+    const resolvedAID = await validateAID(aid);
     aidChecking.style.display = 'none'; aidNext.disabled = false;
-    if (!valid) { aidField.classList.add('invalid'); if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); return; }
-    session.aid = aid;
+    if (!resolvedAID) { aidField.classList.add('invalid'); if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); return; }
+    session.aid = resolvedAID;
     document.getElementById('step-aid').style.display='none';
     document.getElementById('step-nick').style.display='block';
     document.getElementById('onb-lead').textContent = lang==='ru'?'Почти готово':'Дайын болды';

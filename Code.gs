@@ -5,7 +5,7 @@
 
 function doGet(e) {
   var action = e.parameter.action;
-  if (action === 'validateAID') return json({ valid: aidExists(e.parameter.aid) });
+  if (action === 'validateAID') { var resolved = resolveToAID(e.parameter.aid); return json({ valid: !!resolved, aid: resolved || '' }); }
   if (action === 'leaderboard') return json({ leaderboard: getLeaderboard(), last_updated: getLastUpdated() });
   if (action === 'stats')       return json({ stats: getStats(e.parameter.aid) });
   if (action === 'tasks')       return json({ tasks: getTasks() });
@@ -55,12 +55,13 @@ function affiliateRows() {
   var grouped = {};
   raw.forEach(function(r) {
     var aid = String(r['AID']).trim();
-    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0, approvedDate: '' };
+    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0, approvedDate: '', uid: '' };
     grouped[aid].eFTD += Number(r['eFTD']) || 0;
     grouped[aid].ftd  += Number(r['ftd']) || 0;
     grouped[aid].reg  += Number(r['Reg Users']) || 0;
     grouped[aid].vol  += Number(r['Vol_Portal_Client_Non_MT5']) || 0;
     if (!grouped[aid].approvedDate && r['Aff_Approved_date']) grouped[aid].approvedDate = String(r['Aff_Approved_date']);
+    if (!grouped[aid].uid && r['UID']) grouped[aid].uid = String(r['UID']).trim();
   });
   return Object.keys(grouped).map(function(k) { return grouped[k]; });
 }
@@ -90,8 +91,19 @@ function isNewcomer(approvedDateStr) {
   return diff >= 0 && diff <= 90 * 24 * 60 * 60 * 1000;
 }
 
+function resolveToAID(input) {
+  if (!input) return null;
+  var str = String(input).trim();
+  var all = affiliateRows();
+  var byAID = all.filter(function(a) { return a.AID === str; })[0];
+  if (byAID) return byAID.AID;
+  var byUID = all.filter(function(a) { return a.uid && a.uid === str; })[0];
+  if (byUID) return byUID.AID;
+  return null;
+}
+
 function aidExists(aid) {
-  return affiliateRows().some(function(a) { return a.AID === String(aid).trim(); });
+  return !!resolveToAID(aid);
 }
 
 function nickMap() {
