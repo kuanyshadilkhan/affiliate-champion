@@ -557,7 +557,7 @@
       { label: `${t.vol} / 100K × ${m.vol}`, pts: bd.vol   },
       { label: t.taskPts,                    pts: bd.tasks  },
       { label: t.totalLabel, pts: myStats.points, total: true },
-    ].filter(r => r.total || r.pts > 0);
+    ];
     const prize = potentialPrize(myStats.rank, poolTotal);
     const prizeEl = document.getElementById('pool-prize-hint');
     if (prizeEl) prizeEl.textContent = prize ? t.prizeHint + ': ~$' + prize : '';
