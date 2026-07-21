@@ -55,11 +55,12 @@ function affiliateRows() {
   var grouped = {};
   raw.forEach(function(r) {
     var aid = String(r['AID']).trim();
-    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0, approvedDate: '', uid: '' };
-    grouped[aid].eFTD += Number(r['eFTD']) || 0;
-    grouped[aid].ftd  += Number(r['ftd']) || 0;
-    grouped[aid].reg  += Number(r['Reg Users']) || 0;
-    grouped[aid].vol  += Number(r['Vol_Portal_Client_Non_MT5']) || 0;
+    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0, tradfi: 0, approvedDate: '', uid: '' };
+    grouped[aid].eFTD   += Number(r['eFTD']) || 0;
+    grouped[aid].ftd    += Number(r['ftd']) || 0;
+    grouped[aid].reg    += Number(r['Reg Users']) || 0;
+    grouped[aid].vol    += Number(r['Vol_Portal_Client_Non_MT5']) || 0;
+    grouped[aid].tradfi += Number(r['MT5_Non_Crypto_Vol_Client']) || 0;
     if (!grouped[aid].approvedDate && r['Aff_Approved_date']) grouped[aid].approvedDate = String(r['Aff_Approved_date']);
     if (!grouped[aid].uid && r['AFF_UID']) grouped[aid].uid = String(r['AFF_UID']).trim();
   });
@@ -68,10 +69,11 @@ function affiliateRows() {
 
 function calcPoints(a, c) {
   var volUnit = c.vol_unit_size || 100000;
-  return a.reg  * (c.points_per_reg  || 0)
-       + a.ftd  * (c.points_per_ftd  || 0)
-       + a.eFTD * (c.points_per_eftd || 0)
-       + Math.floor(a.vol / volUnit) * (c.points_per_vol_unit || 0);
+  return a.reg    * (c.points_per_reg        || 0)
+       + a.ftd    * (c.points_per_ftd        || 0)
+       + a.eFTD   * (c.points_per_eftd       || 0)
+       + Math.floor(a.vol    / volUnit) * (c.points_per_vol_unit        || 0)
+       + Math.floor((a.tradfi || 0) / volUnit) * (c.points_per_tradfi_unit || 10);
 }
 
 function levelFor(points, c) {
@@ -171,21 +173,24 @@ function getStats(aid) {
   return {
     aid: aidStr, points: pts, eftd: a.eFTD, ftd: a.ftd, regs: a.reg, vol: a.vol,
     earned: a.eFTD * (c.usd_per_eftd || 10),
+    tradfi: a.tradfi || 0,
     level: levelFor(pts, c), rank: rank, total: lb.length,
     isNewcomer: isNewcomer(a.approvedDate),
     approvedDate: String(a.approvedDate || ''),
     breakdown: {
-      reg:  a.reg  * (c.points_per_reg  || 0),
-      ftd:  a.ftd  * (c.points_per_ftd  || 0),
-      eftd: a.eFTD * (c.points_per_eftd || 0),
-      vol:  Math.floor(a.vol / volUnit) * (c.points_per_vol_unit || 0),
-      tasks: taskPts
+      reg:    a.reg  * (c.points_per_reg  || 0),
+      ftd:    a.ftd  * (c.points_per_ftd  || 0),
+      eftd:   a.eFTD * (c.points_per_eftd || 0),
+      vol:    Math.floor(a.vol / volUnit) * (c.points_per_vol_unit || 0),
+      tradfi: Math.floor((a.tradfi || 0) / volUnit) * (c.points_per_tradfi_unit || 10),
+      tasks:  taskPts
     },
     multipliers: {
-      reg:  c.points_per_reg      || 0,
-      ftd:  c.points_per_ftd      || 0,
-      eftd: c.points_per_eftd     || 0,
-      vol:  c.points_per_vol_unit || 0
+      reg:    c.points_per_reg          || 0,
+      ftd:    c.points_per_ftd          || 0,
+      eftd:   c.points_per_eftd         || 0,
+      vol:    c.points_per_vol_unit     || 0,
+      tradfi: c.points_per_tradfi_unit  || 10
     }
   };
 }

@@ -442,7 +442,7 @@
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Задания',
       reward_pts:'баллы', reward_cash:'при', eftd_word:'eFTD', deadline:'до', linkBtn:'Как создать ссылку →', done:'Выполнено', open:'Активно',
       editNickTitle:'Изменить псевдоним', cancel:'Отмена', save:'Сохранить', toNextPrefix:'до',
-      vol:'Объём торгов', breakdownTitle:'Начисление баллов', totalLabel:'Итого', taskPts:'Задания (одобрено)',
+      vol:'Объём торгов', tradfiVol:'Торговый оборот TradFi', breakdownTitle:'Начисление баллов', totalLabel:'Итого', taskPts:'Задания (одобрено)',
       addLink:'Добавить ссылку', submitBtn:'Отправить', submitting:'Отправляем...',
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Соцсеть', viewsLabel:'Просмотры',
       yourLinks:'Ваши ссылки', pending:'На проверке', approved:'Одобрено', rejected:'Отклонено',
@@ -460,7 +460,7 @@
       tabLb:'Рейтинг', tabStats:'Статистика', tabTasks:'Тапсырмалар',
       reward_pts:'ұпай', reward_cash:'шарт:', eftd_word:'eFTD', deadline:'дейін', linkBtn:'Сілтеме қалай жасау керек →', done:'Орындалды', open:'Белсенді',
       editNickTitle:'Лақап атты өзгерту', cancel:'Болдырмау', save:'Сақтау', toNextPrefix:'дейін',
-      vol:'Сауда айналымы', breakdownTitle:'Ұпайлар есебі', totalLabel:'Барлығы', taskPts:'Тапсырмалар (мақұлданды)',
+      vol:'Сауда айналымы', tradfiVol:'TradFi сауда айналымы', breakdownTitle:'Ұпайлар есебі', totalLabel:'Барлығы', taskPts:'Тапсырмалар (мақұлданды)',
       addLink:'Сілтеме қосу', submitBtn:'Жіберу', submitting:'Жіберілуде...',
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Әлеуметтік желі', viewsLabel:'Қаралымдар',
       yourLinks:'Сіздің сілтемелеріңіз', pending:'Тексерілуде', approved:'Мақұлданды', rejected:'Қабылданбады',
@@ -478,7 +478,7 @@
       tabLb:'Leaderboard', tabStats:'Stats', tabTasks:'Tasks',
       reward_pts:'pts', reward_cash:'at', eftd_word:'eFTD', deadline:'until', linkBtn:'How to create a link →', done:'Done', open:'Active',
       editNickTitle:'Edit nickname', cancel:'Cancel', save:'Save', toNextPrefix:'to',
-      vol:'Trading volume', breakdownTitle:'Points breakdown', totalLabel:'Total', taskPts:'Tasks (approved)',
+      vol:'Trading volume', tradfiVol:'TradFi volume', breakdownTitle:'Points breakdown', totalLabel:'Total', taskPts:'Tasks (approved)',
       addLink:'Add link', submitBtn:'Submit', submitting:'Submitting...',
       linkPlaceholder:'https://youtube.com/...', socialLabel:'Social network', viewsLabel:'Views',
       yourLinks:'Your links', pending:'Pending', approved:'Approved', rejected:'Rejected',
@@ -551,11 +551,12 @@
     const bd = myStats.breakdown;
     const m = myStats.multipliers;
     const bRows = [
-      { label: `${t.regs} × ${m.reg}`,       pts: bd.reg   },
-      { label: `FTD × ${m.ftd}`,             pts: bd.ftd   },
-      { label: `eFTD × ${m.eftd}`,           pts: bd.eftd  },
-      { label: `${t.vol} / 100K × ${m.vol}`, pts: bd.vol   },
-      { label: t.taskPts,                    pts: bd.tasks  },
+      { label: `${t.regs} × ${m.reg}`,            pts: bd.reg    },
+      { label: `FTD × ${m.ftd}`,                  pts: bd.ftd    },
+      { label: `eFTD × ${m.eftd}`,                pts: bd.eftd   },
+      { label: `${t.vol} / 100K × ${m.vol}`,      pts: bd.vol    },
+      { label: `${t.tradfiVol} / 100K × ${m.tradfi}`, pts: bd.tradfi },
+      { label: t.taskPts,                          pts: bd.tasks  },
       { label: t.totalLabel, pts: myStats.points, total: true },
     ];
     const prize = potentialPrize(myStats.rank, poolTotal);
