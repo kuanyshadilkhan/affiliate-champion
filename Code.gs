@@ -55,12 +55,14 @@ function affiliateRows() {
   var grouped = {};
   raw.forEach(function(r) {
     var aid = String(r['AID']).trim();
-    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0, tradfi: 0, approvedDate: '', uid: '' };
+    if (!grouped[aid]) grouped[aid] = { AID: aid, AFF_Name: r['AFF_Name'] || '', eFTD: 0, ftd: 0, reg: 0, vol: 0, tradfi: 0, netFee: 0, netReturn: 0, approvedDate: '', uid: '' };
     grouped[aid].eFTD   += Number(r['eFTD']) || 0;
     grouped[aid].ftd    += Number(r['ftd']) || 0;
     grouped[aid].reg    += Number(r['Reg Users']) || 0;
     grouped[aid].vol    += Number(r['Vol_Portal_Client_Non_MT5']) || 0;
-    grouped[aid].tradfi += Number(r['MT5_Non_Crypto_Vol_Client']) || 0;
+    grouped[aid].tradfi    += Number(r['MT5_Non_Crypto_Vol_Client']) || 0;
+    grouped[aid].netFee    += Number(r['Net_Fee_Client']) || 0;
+    grouped[aid].netReturn += Number(r['Net_Return']) || 0;
     if (!grouped[aid].approvedDate && r['Aff_Approved_date']) grouped[aid].approvedDate = String(r['Aff_Approved_date']);
     if (!grouped[aid].uid && r['AFF_UID']) grouped[aid].uid = String(r['AFF_UID']).trim();
   });
@@ -322,10 +324,150 @@ function onEdit(e) {
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === 'last_updated') {
       sh.getRange(i + 1, 2).setValue(now);
+      writeSnapshot();
       return;
     }
   }
   sh.appendRow(['last_updated', now]);
+  writeSnapshot();
+}
+
+function getMostHardworking() {
+  var sh = sheet('submissions');
+  if (!sh) return null;
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return null;
+  var headers = data[0];
+  var aidIdx = headers.indexOf('aid');
+  var statusIdx = headers.indexOf('status');
+  var counts = {};
+  data.slice(1).forEach(function(r) {
+    if (String(r[statusIdx]).trim() === 'approved') {
+      var aid = String(r[aidIdx]).trim();
+      counts[aid] = (counts[aid] || 0) + 1;
+    }
+  });
+  var best = null, bestCount = 0;
+  Object.keys(counts).forEach(function(aid) {
+    if (counts[aid] > bestCount) { bestCount = counts[aid]; best = aid; }
+  });
+  if (!best) return null;
+  var nicks = nickMap();
+  return { aid: best, nick: nicks[best] || ('AID ' + best), count: bestCount };
+}
+
+function writeSnapshot() {
+  var c = getConfig();
+  var nicks = nickMap();
+  var taskPtsMap = getAllTaskPoints();
+  var affs = affiliateRows();
+
+  var lb = affs.map(function(a) {
+    var pts = calcPoints(a, c) + (taskPtsMap[a.AID] || 0);
+    return {
+      aid: a.AID, nick: nicks[a.AID] || ('AID ' + a.AID),
+      points: pts, eftd: a.eFTD, ftd: a.ftd, regs: a.reg,
+      netFee: a.netFee || 0, netReturn: a.netReturn || 0,
+      isNewcomer: isNewcomer(a.approvedDate)
+    };
+  }).sort(function(x, y) { return y.points - x.points; });
+
+  var totalEftd = affs.reduce(function(s, a) { return s + a.eFTD; }, 0);
+  var poolBase = c.pool_base || 500;
+  var perEftd = c.pool_per_eftd || 10;
+  var poolTotal = poolBase + totalEftd * perEftd;
+  var eftdDirectBonus = c.usd_per_eftd || 10;
+
+  var prizeMap = {};
+  var shares = [0.40, 0.25, 0.15];
+  lb.slice(0, 3).forEach(function(p, i) {
+    prizeMap[p.aid] = Math.round(poolTotal * shares[i]);
+  });
+  var hw = getMostHardworking();
+  if (hw) prizeMap[hw.aid] = (prizeMap[hw.aid] || 0) + Math.round(poolTotal * 0.08);
+  var newcomers = lb.filter(function(p) { return p.isNewcomer; });
+  var bestNewcomer = newcomers.length > 0 ? newcomers[0] : null;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sn = ss.getSheetByName('Snapshot');
+  if (!sn) sn = ss.insertSheet('Snapshot');
+  sn.clearContents();
+  sn.clearFormats();
+
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy HH:mm');
+
+  // ── Header ──
+  sn.getRange('A1').setValue('MONTHLY SNAPSHOT — Bybit KZ').setFontSize(14).setFontWeight('bold');
+  sn.getRange('A2').setValue('Updated: ' + now).setFontColor('#888888');
+
+  // ── Pool summary ──
+  sn.getRange('A4').setValue('PRIZE POOL').setFontWeight('bold');
+  sn.getRange('A5:B5').setValues([['Pool base', '$' + poolBase]]);
+  sn.getRange('A6:B6').setValues([['eFTD this month', totalEftd + ' × $' + perEftd + ' = $' + (totalEftd * perEftd)]]);
+  sn.getRange('A7:B7').setValues([['Total pool', '$' + poolTotal]]).setFontWeight('bold');
+  sn.getRange('A8:B8').setValues([['eFTD direct bonus', '$' + eftdDirectBonus + ' per eFTD (paid separately)']]).setFontColor('#27AE60');
+
+  // ── Special prizes ──
+  sn.getRange('A10').setValue('SPECIAL PRIZES').setFontWeight('bold');
+  sn.getRange('A11:B11').setValues([['Most Hardworking (8%)', hw ? hw.nick + ' (' + hw.count + ' approved tasks) — $' + Math.round(poolTotal * 0.08) : 'No approved submissions yet']]);
+  sn.getRange('A12:B12').setValues([['Best Newcomer (12%)', bestNewcomer ? bestNewcomer.nick + ' — ' + bestNewcomer.points + ' pts (manager decides)' : 'No newcomers this month']]);
+
+  // ── Main table ──
+  var headerRow = 14;
+  var headers = ['Rank','AID','Nickname','Points','eFTD','FTD','Regs',
+                 'eFTD Bonus ($' + eftdDirectBonus + '/ea)','Pool Prize','Total Payout',
+                 'Net Return','Net After Prizes','ROI','Newcomer'];
+  sn.getRange(headerRow, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold').setBackground('#1E2A38').setFontColor('#FFFFFF');
+
+  var colors = { 1:'#FFF3CD', 2:'#F0F0F0', 3:'#F5E6D3' };
+  var hwColor = '#D4EDDA';
+  var ncColor = '#D1ECF1';
+
+  lb.forEach(function(p, i) {
+    var rank = i + 1;
+    var eftdBonus = p.eftd * eftdDirectBonus;
+    var poolPrize = prizeMap[p.aid] || 0;
+    var totalPayout = eftdBonus + poolPrize;
+    var netAfter = p.netReturn - totalPayout;
+    var roi = totalPayout > 0 ? (p.netReturn / totalPayout * 100).toFixed(1) + '%' : '—';
+    var isHw = hw && hw.aid === p.aid;
+    var row = [
+      rank, p.aid, p.nick, p.points, p.eftd, p.ftd, p.regs,
+      eftdBonus > 0 ? '$' + eftdBonus : '—',
+      poolPrize > 0 ? '$' + poolPrize : '—',
+      totalPayout > 0 ? '$' + totalPayout : '—',
+      p.netReturn > 0 ? '$' + p.netReturn.toFixed(2) : '—',
+      p.netReturn > 0 ? '$' + netAfter.toFixed(2) : '—',
+      roi,
+      p.isNewcomer ? 'Новичок' : ''
+    ];
+    var r = headerRow + 1 + i;
+    sn.getRange(r, 1, 1, row.length).setValues([row]);
+    var bg = colors[rank] || (i % 2 === 0 ? '#F5F7FA' : '#FFFFFF');
+    if (isHw) bg = hwColor;
+    if (p.isNewcomer && rank > 3) bg = ncColor;
+    sn.getRange(r, 1, 1, row.length).setBackground(bg);
+  });
+
+  // ── Totals row ──
+  var totalRow = headerRow + 1 + lb.length;
+  var totalEftdBonus = lb.reduce(function(s, p) { return s + p.eftd * eftdDirectBonus; }, 0);
+  var totalPoolPaid = Object.keys(prizeMap).reduce(function(s, k) { return s + prizeMap[k]; }, 0);
+  var totalNetReturn = lb.reduce(function(s, p) { return s + p.netReturn; }, 0);
+  sn.getRange(totalRow, 1, 1, headers.length).setValues([[
+    'TOTAL', '', '', '', totalEftd, '', '',
+    '$' + totalEftdBonus, '$' + totalPoolPaid, '$' + (totalEftdBonus + totalPoolPaid),
+    '$' + totalNetReturn.toFixed(2),
+    '$' + (totalNetReturn - totalEftdBonus - totalPoolPaid).toFixed(2),
+    '', ''
+  ]]).setFontWeight('bold').setBackground('#1E2A38').setFontColor('#F0A500');
+
+  // Column widths
+  var widths = [6,10,22,8,7,7,7,16,12,14,14,16,8,10];
+  widths.forEach(function(w, i) {
+    sn.setColumnWidth(i + 1, w * 7);
+  });
 }
 
 // ── ANNOUNCEMENT ──────────────────────────────────────────────────────
